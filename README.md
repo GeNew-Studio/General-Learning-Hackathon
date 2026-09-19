@@ -1,36 +1,138 @@
 # FakerAI
 
-You play the other party; an AI decoy stays in persona, keeps them talking, and quietly
-builds a case file. When the agent is confident it is talking to a scammer, the case is
-written to a local SQLite database with everything the conversation gave away — accounts,
-wallets, handles, links, aliases, and the playbook they are running.
+FakerAI sits on a dating app and keeps scammers away from the person using it. It screens
+matches before any contact, watches every conversation that does open, and the moment the
+other side reaches for the user's money it takes the keyboard, plays the victim, and works
+the scammer for the one thing a bank or the police can actually act on: the account the
+money was going to.
 
 Three stages, same as the commercial scam-baiting systems this is modelled on:
 
 1. **Bait** — Ava Lin stays in character and keeps the conversation alive.
 2. **Extract** — every turn, the model pulls structured intelligence out of what they said.
-3. **File** — confident cases land in the database, searchable and exportable.
+3. **File** — confident cases land in a local database, searchable and exportable.
 
-## The dating flow (`/tinder`)
+---
 
-The Tinder skin runs the whole product, not just a chat box:
+# Two surfaces, one engine
 
-1. **Pre-screen** — `app/profiles.py` scores all 14 deck profiles on what is visible before
-   a word is typed: synthetic-photo confidence, face consistency across photos, reverse image
-   hits, account age, verification, off-app pushes, bio patterns. Profiles at 70+ are blocked
-   and their chat never opens (`POST /api/session` answers 403).
-2. **You talk** — a clear profile opens a normal thread. The account owner is the one
-   replying and the monitor strip scores every turn.
-3. **Faker takes over** — the moment they go at your money in any form (a loan, a top-up, a
-   gift card, a clearance fee, an investment platform, or asking to route money through your
-   account) the keyboard is Faker's. The thread shows **FAKER HAS TAKEN OVER THIS CHAT** and
-   the decoy starts baiting.
-4. **Handover** — the case does not close on a verdict. It closes when a bank account or
-   wallet is on the record, and then the packet ships to police and bank in `static/handover.js`.
+The same FastAPI service (`app/main.py`) serves two completely different views. They share
+one brain, one scoring pipeline, and one case database — they just show different halves
+of it. Both run at the same time on port 8787.
+
+| | **Analyst console** (`/`) | **Tinder demo** (`/tinder`) |
+|---|---|---|
+| What it is | The back office. What a fraud desk, a police cyber unit, or our own team sees. | The product. What the person on the dating app sees on their phone. |
+| Who is typing | You play the other party (the scammer). The decoy answers. | You play the match (the scammer). The user's account answers. |
+| What it shows | Live risk score, verdict, why, the fraud report filling in field by field, every stored case. | A deck of screened matches, a chat, a live monitor bar, the takeover banner, the handover animation. |
+| Why it exists | Proves the detection and evidence are real, not scripted. | Proves the experience: the user never has to judge anyone. |
+| Built from | `static/index.html` + `static/app.js` + `static/styles.css` | `static/tinder.html` + `static/tinder.js` + `static/tinder.css` |
+
+Shared by both: `app/agent.py` (one model call per turn), `app/signals.py` (rule hits),
+`app/intel.py` (evidence extraction), `app/db.py` (case storage), and `static/handover.js`
+(the "ship the case" animation).
+
+## 1. Analyst console — `/`
+
+Two tabs.
+
+**Live chat.** You type as the other party; the decoy replies. The right-hand panel is the
+analyst view and the decoy never sees it:
+
+- **Score dial + verdict** (`scammer` / `uncertain` / `benign`), recomputed every turn.
+- **Why** — the model's evidence, in its own words, plus any regex rule hits.
+- **Fraud report** — five groups (identity, contact, payment rails, infrastructure,
+  playbook) that tick over as the conversation gives things away. `0/5` becomes `3/5` only
+  because the other side actually said something, never because a timer fired.
+- **Flag as swindler** to file a case by hand at any point.
+
+**Case files.** Every filed case: verdict, analyst notes, full transcript, and all extracted
+values. Search across IDs, categories, summaries and any indicator; export to JSON or CSV.
+A value seen in more than one case surfaces as **shared infrastructure** — that is how one
+mule account links separate victims.
+
+## 2. Tinder demo — `/tinder`
+
+The whole user journey, in four beats.
+
+**1. Pre-screen, before any contact.** `app/profiles.py` scores all 14 deck profiles on
+what a dating app can see before a word is typed: synthetic-photo confidence, whether the
+three photos are even the same face, reverse image hits (p05 is running p01's photos),
+account age, photo verification, an off-app push in the bio, and known bio scripts
+(widower on an oil rig, guaranteed daily returns). Each card shows the score and the exact
+reasons.
+
+- **risk ≥ 70 → blocked.** The card is greyed out, the button is dead, and there is no chat
+  to open. The server enforces it too: `POST /api/session` with that profile returns **403**.
+  5 of the 14 profiles are blocked this way.
+- **risk 30–69 → caution.** The chat opens with the monitor already warmed up.
+- **risk < 30 → clear.** Opens normally.
+
+**2. You talk, Faker watches.** A clear profile opens an ordinary thread. The replies from
+the user's account are the user's own ordinary dating chat — Faker is not baiting yet, it
+is only scoring. The strip above the thread shows the live score and what it thinks.
+
+This is the point the pre-screen cannot solve: a scammer with real stolen-but-clean photos
+and a two-year-old account passes screening. Intent only shows up in what they say.
+
+**3. Faker takes over.** When the conversation turns into a scam (rules below), the thread
+drops a banner — **FAKER HAS TAKEN OVER THIS CHAT** — and from that turn on the account is
+run by the decoy, not the user. It plays willing and slightly flustered, stalls on actually
+sending anything, and pushes for their bank, FPS, PayMe or wallet. Its messages are marked
+*Sent by Faker*.
+
+**4. Case sealed and shipped.** Once there is an account or wallet on the record, the case
+is written to the database and the handover animation packs the evidence and sends it to
+the police cyber unit and the bank fraud desk, with a case ID.
 
 In the demo the person at the keyboard plays the match, so their lines land on the left and
-your account answers on the right. `/tinder?open=p09` jumps straight into a thread.
-Profile art is generated by `python scripts/make_photos.py` into `static/photos/`.
+the user's account answers on the right. `/tinder?open=p09` jumps straight into a thread and
+`/tinder?script=1` replays canned turns if there is no network. Profile art is generated by
+`python scripts/make_photos.py` into `static/photos/`.
+
+---
+
+# How FakerAI decides
+
+Every threshold below is in the code, not in a slide.
+
+| Decision | Rule | Where |
+|---|---|---|
+| **Block before contact** | Pre-screen risk ≥ 70. Chat never opens; API returns 403. | `app/profiles.py`, `main._match_context` |
+| **Watch but allow** | Pre-screen risk 30–69. The monitor starts at 40% of the pre-screen risk instead of zero. | `main._opening_detection` |
+| **Takeover — money route** | The newest message hits any money pattern. Checked *before* the model is called, so the very reply to the money ask is already the decoy's. | `signals.MONEY_SIGNALS`, `main.chat` |
+| **Takeover — judgement route** | No money named yet, but the model returns `scammer` and the blended score is ≥ 65 — a fake identity unravelling, isolation pressure, a push off the app. | `main.chat` |
+| **Score** | 72% model judgement + 28% rule hits, 0–100. Capped to 92 once a payment rail lands. | `main._blend_score` |
+| **Close the case** | Verdict `scammer` **and** score ≥ 70 **and** confidence ≥ 60 **and** a bank account or wallet is in the intel. | `main._maybe_record` |
+| **Do not close** | Everything else. A verdict on its own is not a case — with no account there is nothing to freeze — so the decoy keeps stalling and asking. | `TAKEOVER_PROMPT` in `app/agent.py` |
+| **Drop it** | Ordinary chat: ≥ 3 turns, score ≤ 32, verdict `benign`, no rule hits, no takeover. The decoy wraps up and goes quiet, and nothing is stored. | `main.chat` |
+
+**"Any move at the user's money" is the trigger, not the word "transfer".** A scammer rarely
+asks for a transfer first. `app/signals.py` covers lend / borrow / cover it for me, top-ups
+and recharges, gift cards and store codes, advance fees (customs, clearance, handling,
+unfreeze, 解凍金 / 手續費 / 保證金), investment platforms and "guaranteed returns", crypto
+wallets, job fees, and money-mule asks ("my account is frozen, can I receive it through
+yours"), in English and in Chinese.
+
+**Escalation is never faked.** The score, the ticking fraud report, the takeover banner and
+the handover all come from `/api/chat` responses. If the model is unreachable the decoy says
+nothing at all rather than inventing a line.
+
+## Try it in two minutes
+
+Open `/tinder` and play the scammer.
+
+1. Scroll the deck. Five profiles are already **blocked** with reasons — try the button, it
+   does nothing. That is the time FakerAI just saved the user.
+2. Open a clear one, e.g. **Ivan Sze**. Say something normal: *"hey! you cycle too?"*
+   The reply is ordinary, the monitor sits low.
+3. Go for the money in any wrapper: *"my card got frozen, can you top up 5000 for me
+   tonight? i'll pay you back tmr"*. The banner fires on that same turn and the reply is
+   already asking which app and whose account.
+4. Hand over an account: *"hsbc 004-887231-838, name IVAN SZE, or fps 92345678"*. The score
+   locks at 92, the case is filed, and the packet ships to police and bank.
+
+Same run without a browser: `python scripts/flow_check.py`.
 
 ## Setup
 
@@ -48,7 +150,14 @@ Copy `.env.example` to `.env` and fill in a key. First `npm run dev` will create
 npm run dev
 ```
 
-Open [http://127.0.0.1:8787](http://127.0.0.1:8787). Port 8000 is blocked on this machine.
+One server, two views — open both:
+
+| | |
+|---|---|
+| Analyst console | [http://127.0.0.1:8787/](http://127.0.0.1:8787/) |
+| Tinder demo | [http://127.0.0.1:8787/tinder](http://127.0.0.1:8787/tinder) |
+
+Port 8000 is blocked on this machine.
 
 Same server, without npm:
 
@@ -98,14 +207,21 @@ the network path, not a bad key. Either use a VPN, or route through OpenRouter:
 fraction of a cent. With no credit on the account, set `OPENROUTER_MODEL` to a free model
 such as `z-ai/glm-5.2:free` instead.
 
-## Persona
+## Persona and the two phases
 
-Every session is **Ava Lin**, a 29-year-old graphic designer in Hong Kong on Tinder.
-The decoy plays naive and stalls, but never sends money, OTPs, seed phrases, or ID.
-It does push for *their* details — which account, which wallet, which link — because that
-is what ends up in the case file.
+Every session is **Ava Lin**, a 29-year-old graphic designer in Hong Kong on Tinder. She is
+the account owner, and the model writes her side of the conversation in one of two modes
+(`app/agent.py`):
 
-Ordinary chat with no fraud pattern: after a few turns the decoy wraps up and goes quiet.
+- **`phase: "user"`** — she is just herself. Short, warm, ordinary dating chat. No baiting,
+  no fishing for bank details, no suspicion. This is what a real user's thread looks like.
+- **`phase: "takeover"`** — Faker is running her account. It plays naive and willing, stalls
+  on the actual handover with practical friction (the HSBC app is spinning, the FPS limit,
+  a mistyped digit), and pushes for *their* bank, account name, FPS / PayMe, or wallet.
+
+In both phases the decoy never sends money, OTPs, seed phrases, or ID, and never tells them
+they have been detected. Ordinary chat with no fraud pattern: after a few turns she wraps
+up and goes quiet, and nothing is stored.
 
 ## Case files
 
@@ -146,6 +262,11 @@ SQLite at `data/decoy.db` (override with `DECOY_DB_PATH`), three tables: `cases`
 | GET | `/api/health` | provider chain state |
 | POST | `/api/providers/reload` | re-read `.env` and rebuild the provider chain |
 | POST | `/api/providers/configure` | save `POE_API_KEY` locally and rebuild the chain |
+
+`/api/chat` returns the decoy's `reply` plus everything the two UIs draw from:
+`detection` (score, verdict, confidence, reasons, rule hits), `intel` (the five evidence
+groups), `phase` and `takeover_now`, `case_ready` (a payment rail exists), and `case_id` /
+`recorded_now` once the case is filed.
 
 ## Checking it without a browser
 
