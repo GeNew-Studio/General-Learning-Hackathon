@@ -164,6 +164,9 @@ html, body {
   height: 52px;
   border-radius: 50%;
   object-fit: cover;
+  /* Portraits are 4:5 with the head in the upper half, so a square crop has to
+     sit high or the circle fills up with shoulders. */
+  object-position: 50% 22%;
   background: #d9d0c8;
 }
 .match-name {
@@ -692,6 +695,7 @@ html, body {
   z-index: 10;
 }
 .stage-note strong { color: #e2e8f0; font-size: 0.86rem; letter-spacing: 0.01em; }
+.stage-note .stage-role { color: #fe3c72; font-weight: 600; max-width: 20ch; }
 .stage-note a {
   margin-top: 0.3rem;
   justify-self: start;
@@ -766,6 +770,18 @@ html, body {
 }
 .deck-summary b { color: #0b1020; }
 
+/* The judge is the scammer in this demo — say so before they open a chat. */
+.deck-role {
+  margin: 0;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #7a3350;
+  background: #fff1f5;
+  border-bottom: 1px solid #fcdbe4;
+}
+.deck-role b { color: #be123c; }
+
 .deck-list {
   display: flex;
   flex-direction: column;
@@ -784,6 +800,9 @@ html, body {
 .card {
   display: grid;
   grid-template-columns: 116px 1fr;
+  /* The photo stretches to the card, so cards of different heights would frame
+     the same face at different sizes. A floor keeps the deck looking even. */
+  min-height: 232px;
   background: var(--tinder-white);
   border-radius: 1rem;
   overflow: hidden;
@@ -818,7 +837,12 @@ html, body {
   mix-blend-mode: multiply;
 }
 
-.card-body { padding: 0.65rem 0.75rem 0.7rem; min-width: 0; }
+.card-body {
+  padding: 0.65rem 0.75rem 0.7rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 .card-body h3 {
   margin: 0;
   font-size: 1rem;
@@ -870,7 +894,7 @@ html, body {
 .card[data-verdict="caution"] .screen-bar i { background: #f59e0b; }
 .card[data-verdict="blocked"] .screen-bar i { background: #e11d48; }
 
-.screen-reasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.16rem; }
+.screen-reasons { list-style: none; margin: 0 0 0.55rem; padding: 0; display: grid; gap: 0.16rem; }
 .screen-reasons li {
   font-size: 0.71rem;
   line-height: 1.35;
@@ -893,7 +917,7 @@ html, body {
 .screen-clean { margin: 0; font-size: 0.71rem; color: #8e8e93; }
 
 .card-btn {
-  margin-top: 0.55rem;
+  margin-top: auto;
   width: 100%;
   border: 0;
   border-radius: 999px;

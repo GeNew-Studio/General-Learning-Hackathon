@@ -298,7 +298,7 @@ function setBusy(on) {
     ? "Report handed over"
     : on
       ? "Waiting for the decoy…"
-      : "Message the decoy…";
+      : "Type as the scammer…";
 }
 
 function clearHandover() {
@@ -490,7 +490,7 @@ function paintCaseGate(data) {
 function setComposerBlocked(on) {
   input.disabled = on;
   sendBtn.disabled = on;
-  input.placeholder = on ? "Blocked by pre-screen — no chat to open" : "Message the decoy…";
+  input.placeholder = on ? "Blocked by pre-screen — no chat to open" : "Type as the scammer…";
 }
 
 async function loadProfiles() {
@@ -558,8 +558,8 @@ async function newSession() {
   addBubble(
     "system",
     profile
-      ? `Matched with ${profile.name}. You are the other party — chat normally, or go for the money.`
-      : "You are the other party. Romance lure, emergency loan — or chat normally.",
+      ? `Matched with ${profile.name}. You type as them — you are playing the scammer. Chat normally, or go for the money.`
+      : "You type as the match — you are playing the scammer. Romance lure, emergency loan, or just chat.",
   );
 }
 

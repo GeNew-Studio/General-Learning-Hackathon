@@ -356,6 +356,19 @@ select:disabled { opacity: 0.55; cursor: not-allowed; }
   border-style: dashed;
 }
 
+/* Judges keep asking who they are in the chat — the answer sits on the composer. */
+.role-hint {
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--muted);
+  background: #0e1526;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.role-hint b { color: #f87b9a; }
+
 .composer {
   display: flex;
   gap: 0.5rem;

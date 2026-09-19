@@ -6,13 +6,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#ffffff" />
     <title>Faker · dating</title>
-    <link rel="stylesheet" href="/static/tinder.css?v=9" />
+    <link rel="stylesheet" href="/static/tinder.css?v=10" />
   </head>
   <body>
     <div class="stage">
       <div class="stage-note">
         <strong>FakerAI · the dating app</strong>
         <span>What the user sees on their phone</span>
+        <span class="stage-role">You are the scammer here. Faker answers for the user.</span>
         <a href="/">← Analyst console (the back office)</a>
       </div>
       <div class="phone" id="phone">
@@ -50,6 +51,10 @@
           </header>
 
           <p class="deck-summary" id="deck-summary">Screening profiles…</p>
+          <p class="deck-role">
+            <b>Your role: the scammer.</b> Faker already blocked the ones it can see through —
+            open anyone it let past and try your lure.
+          </p>
           <div class="deck-list" id="deck-list"></div>
           <p class="deck-foot">
             Pre-screen only reads photos, bio and account history. Intent doesn't show up
@@ -88,7 +93,9 @@
 
           <ol class="thread" id="thread"></ol>
 
-          <p class="role-hint" id="role-hint">Demo: you type as <b id="role-name">the match</b></p>
+          <p class="role-hint" id="role-hint">
+            You play the scammer — type as <b id="role-name">the match</b>. Replies come from the user's account.
+          </p>
 
           <form class="composer" id="composer">
             <button type="button" class="gif-btn" id="gif-btn">GIF</button>

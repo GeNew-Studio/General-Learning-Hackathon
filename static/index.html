@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FakerAI</title>
-    <link rel="stylesheet" href="/static/styles.css?v=17" />
+    <link rel="stylesheet" href="/static/styles.css?v=18" />
   </head>
   <body>
     <div class="app">
@@ -13,7 +13,7 @@
           <span class="mark" aria-hidden="true"></span>
           <div>
             <strong>FakerAI · Analyst console</strong>
-            <span class="sub">the back office — you play the other party</span>
+            <span class="sub">the back office — you play the scammer, Faker answers</span>
           </div>
         </div>
         <nav class="tabs" role="tablist">
@@ -57,12 +57,16 @@
             <button type="button" id="recheck-brain">Recheck</button>
           </div>
           <ol class="thread" id="thread"></ol>
+          <p class="role-hint">
+            <b>You are the scammer.</b> Everything you type is the match's side of the chat;
+            the replies come from the user's account.
+          </p>
           <form class="composer" id="composer">
             <textarea
               id="input"
               rows="1"
               maxlength="4000"
-              placeholder="Message the decoy…"
+              placeholder="Type as the scammer…"
               required
             ></textarea>
             <button type="submit" id="send">Send</button>
@@ -199,6 +203,6 @@
     </div>
     <script src="/static/demo-scripts.js?v=2"></script>
     <script src="/static/handover.js?v=1"></script>
-    <script src="/static/app.js?v=26"></script>
+    <script src="/static/app.js?v=27"></script>
   </body>
 </html>

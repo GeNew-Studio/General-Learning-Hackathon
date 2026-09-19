@@ -4,7 +4,8 @@ alwaysApply: true
 
 # FakerAI
 
-Defensive scam-baiting research tool. The user plays the other party; an AI decoy stays in persona,
+Defensive scam-baiting research tool. The person at the keyboard plays the scammer and both
+UIs say so on screen; an AI decoy stays in persona,
 baits for details, and files confirmed scammers into a local database. The analyst pane is
 never mentioned by the decoy.
 
