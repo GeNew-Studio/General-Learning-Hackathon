@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FakerAI</title>
-    <link rel="stylesheet" href="/static/styles.css?v=13" />
+    <link rel="stylesheet" href="/static/styles.css?v=15" />
   </head>
   <body>
     <div class="app">
@@ -24,14 +24,6 @@
         </nav>
         <div class="top-actions">
           <button type="button" id="new-session" class="primary">New session</button>
-          <div class="mode-switch" role="tablist" aria-label="Mode">
-            <button type="button" class="mode-btn" data-mode="demo" role="tab" aria-selected="false">
-              1
-            </button>
-            <button type="button" class="mode-btn active" data-mode="real" role="tab" aria-selected="true">
-              2
-            </button>
-          </div>
         </div>
       </header>
 
@@ -39,14 +31,8 @@
         <section class="chat-pane" aria-label="Conversation">
           <div class="persona-bar">
             <div class="persona-live" id="persona-live">
-              <div class="persona-idle">Persona will lock from your first messages</div>
+              <strong>Ava Lin</strong> · Dating-app user
             </div>
-            <label class="persona-picker">
-              <span>Decoy</span>
-              <select id="persona-select">
-                <option value="">Auto-pick</option>
-              </select>
-            </label>
           </div>
           <div class="offline-banner hidden" id="offline-banner">
             <div class="ob-text">
@@ -98,7 +84,7 @@
                 <div><dt>Turn</dt><dd id="turn">0</dd></div>
                 <div><dt>Evidence</dt><dd id="ioc-count">0</dd></div>
               </dl>
-              <button type="button" id="flag-btn" class="flag-btn">Flag as scammer</button>
+              <button type="button" id="flag-btn" class="flag-btn">Flag as swindler</button>
             </div>
           </div>
 
@@ -186,7 +172,7 @@
         </div>
       </section>
     </div>
-    <script src="/static/demo-scripts.js?v=1"></script>
-    <script src="/static/app.js?v=20"></script>
+    <script src="/static/demo-scripts.js?v=2"></script>
+    <script src="/static/app.js?v=23"></script>
   </body>
 </html>

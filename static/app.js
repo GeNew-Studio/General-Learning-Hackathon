@@ -7,7 +7,6 @@ const input = $("input");
 const form = $("composer");
 const sendBtn = $("send");
 const personaLive = $("persona-live");
-const personaSelect = $("persona-select");
 const reasonsEl = $("reasons");
 const signalsEl = $("signals");
 const scoreEl = $("score");
@@ -86,8 +85,7 @@ const DOSSIER = [
   },
 ];
 
-const DEFAULT_DEMO_PERSONA = "dating";
-const DEFAULT_LIVE_PERSONA = "dating";
+const PERSONA_ID = "dating";
 const HANDOVER_SCORE = 88;
 const HANDOVER_STEPS = [
   { at: 400, step: "extract", kicker: "Extracting fraud data" },
@@ -103,7 +101,6 @@ let filledKeys = new Set();
 let dossierPrimed = false;
 let openCaseId = null;
 let chatMode = "real";
-let demoPersonaId = DEFAULT_DEMO_PERSONA;
 let scriptStep = 0;
 let seededCount = 0;
 let demoLog = [];
@@ -121,7 +118,7 @@ function esc(text) {
 }
 
 function currentDemoScript() {
-  return DEMO_SCRIPTS[demoPersonaId] || null;
+  return DEMO_SCRIPTS[PERSONA_ID] || null;
 }
 
 function scriptActive() {
@@ -137,12 +134,6 @@ function retireScript() {
 
 
 function applyMode() {
-  document.querySelectorAll(".mode-btn").forEach((btn) => {
-    const on = btn.dataset.mode === chatMode;
-    btn.classList.toggle("active", on);
-    btn.setAttribute("aria-selected", on ? "true" : "false");
-  });
-  personaSelect.disabled = false;
   if (scriptActive()) hideOffline();
 }
 
@@ -151,12 +142,9 @@ function paintDemoPersona() {
   if (!script) return;
   personaLive.innerHTML = `<strong>${esc(script.name)}</strong> · ${esc(
     script.role
-  )} · locked<span>${esc(script.hint)}</span>`;
+  )}`;
   providerEl.textContent = "";
   providerEl.className = "provider";
-  if (personaSelect.querySelector(`option[value="${script.id}"]`)) {
-    personaSelect.value = script.id;
-  }
 }
 
 function resetDemoScript() {
@@ -200,28 +188,20 @@ function paintDemoProgress(latestUser) {
   const n = Math.max(texts.length, 1);
   const blob = texts.join("\n");
   const pay = demoPaymentKind(blob);
+  const stage = pay ? "money" : datingDemoStage(blob);
   let score;
   let reasons;
-  if (demoPersonaId === "dating") {
-    const stage = pay ? "money" : datingDemoStage(blob);
-    if (stage === "money") {
-      score = pay ? 88 : 80;
-      reasons = ["Payment / account ask after a romance lure."];
-      if (pay === "bank") reasons.push("Bank account given as a payment rail.");
-      if (pay === "wallet") reasons.push("Crypto wallet given as a payment rail.");
-    } else if (stage === "danger") {
-      score = 55;
-      reasons = ["Security-threat / isolation language. No payment rail yet."];
-    } else {
-      score = 10;
-      reasons = ["Ordinary dating chat. No fraud markers yet."];
-    }
-  } else {
-    score = Math.min(62, 22 + Math.max(0, n - 1) * 16);
-    if (pay) score = Math.max(score, 88);
-    reasons = ["Lure is in progress."];
+  if (stage === "money") {
+    score = pay ? 88 : 80;
+    reasons = ["Payment / account ask after a romance lure."];
     if (pay === "bank") reasons.push("Bank account given as a payment rail.");
     if (pay === "wallet") reasons.push("Crypto wallet given as a payment rail.");
+  } else if (stage === "danger") {
+    score = 55;
+    reasons = ["Security-threat / isolation language. No payment rail yet."];
+  } else {
+    score = 10;
+    reasons = ["Ordinary dating chat. No fraud markers yet."];
   }
   const verdict = score >= 70 ? "scammer" : "uncertain";
 
@@ -512,36 +492,23 @@ function paintIntel(data) {
     flagBtn.textContent = "Update case file";
   } else {
     caseBanner.classList.add("hidden");
-    flagBtn.textContent = "Flag as scammer";
+    flagBtn.textContent = "Flag as swindler";
   }
 
   if (data.persona) {
-    const why = data.persona_pick_reason || "Waiting to lock from your lure.";
-    const lockState = data.persona_forced
-      ? "operator choice"
-      : data.persona_locked
-      ? "locked"
-      : "still reading you";
     personaLive.innerHTML = `<strong>${esc(data.persona.name)}</strong> · ${esc(
       data.persona.role
-    )} · ${lockState}<span>${esc(why)}</span>`;
-    if (personaSelect.value !== data.persona.id && data.persona_forced) {
-      personaSelect.value = data.persona.id;
-    }
+    )}`;
   } else {
-    personaLive.innerHTML = `<div class="persona-idle">Persona will lock from your first messages</div>`;
+    personaLive.innerHTML = `<strong>Ava Lin</strong> · Dating-app user`;
   }
 }
 
 async function createSession() {
-  const personaId =
-    chatMode === "demo"
-      ? demoPersonaId || DEFAULT_DEMO_PERSONA
-      : personaSelect.value || DEFAULT_LIVE_PERSONA;
   const data = await api("/api/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ persona_id: personaId }),
+    body: JSON.stringify({ persona_id: PERSONA_ID }),
   });
   sessionId = data.session_id;
   paintIntel(data);
@@ -557,14 +524,9 @@ async function newSession() {
   resetDemoScript();
   applyMode();
   await createSession();
-  const demo = currentDemoScript();
   addBubble(
     "system",
-    chatMode !== "demo"
-      ? "You are the other party. Job lure, bank story, trading group — or chat normally."
-      : demo
-        ? `You are the other party. Replies follow the ${demo.role} script when your lure is close enough.`
-        : "You are the other party. Job lure, bank story, trading group — or chat normally."
+    "You are the other party. Romance lure, emergency loan — or chat normally."
   );
 }
 
@@ -707,45 +669,6 @@ input.addEventListener("keydown", (e) => {
 
 $("new-session").addEventListener("click", () => {
   newSession().catch((err) => addBubble("system", String(err.message || err)));
-});
-
-document.querySelectorAll(".mode-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const next = btn.dataset.mode;
-    if (next === chatMode) return;
-    chatMode = next;
-    newSession().catch((err) => addBubble("system", String(err.message || err)));
-    if (chatMode === "real") checkBrain();
-  });
-});
-
-personaSelect.addEventListener("change", async () => {
-  if (chatMode === "demo" && (scriptActive() || scriptStep === 0)) {
-    const picked = personaSelect.value;
-    demoPersonaId = DEMO_SCRIPTS[picked] ? picked : picked || DEFAULT_DEMO_PERSONA;
-    if (!picked && DEMO_SCRIPTS[DEFAULT_DEMO_PERSONA]) {
-      demoPersonaId = DEFAULT_DEMO_PERSONA;
-      personaSelect.value = DEFAULT_DEMO_PERSONA;
-    }
-    newSession().catch((err) => addBubble("system", String(err.message || err)));
-    return;
-  }
-  if (!sessionId) return;
-  if (!personaSelect.value) {
-    addBubble("system", "Auto-pick applies from the next session.");
-    return;
-  }
-  try {
-    const data = await api(`/api/session/${sessionId}/persona`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ persona_id: personaSelect.value }),
-    });
-    paintIntel(data);
-    addBubble("system", `Decoy switched to ${data.persona.name}.`);
-  } catch (err) {
-    addBubble("system", String(err.message || err));
-  }
 });
 
 flagBtn.addEventListener("click", async () => {
@@ -927,18 +850,6 @@ $("refresh-cases").addEventListener("click", () => loadCases());
 // ------------------------------------------------------------------ boot
 
 async function boot() {
-  try {
-    const { personas } = await api("/api/personas");
-    personas.forEach((p) => {
-      const option = document.createElement("option");
-      option.value = p.id;
-      option.textContent = `${p.name} · ${p.role}`;
-      personaSelect.appendChild(option);
-    });
-    personaSelect.value = chatMode === "demo" ? demoPersonaId : DEFAULT_LIVE_PERSONA;
-  } catch {
-    /* the picker just stays on auto */
-  }
   renderDossier({}, dossierEl, { animate: false });
   await newSession();
   refreshCount();

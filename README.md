@@ -7,7 +7,7 @@ wallets, handles, links, aliases, and the playbook they are running.
 
 Three stages, same as the commercial scam-baiting systems this is modelled on:
 
-1. **Bait** — one of four personas keeps the conversation alive.
+1. **Bait** — Ava Lin stays in character and keeps the conversation alive.
 2. **Extract** — every turn, the model pulls structured intelligence out of what they said.
 3. **File** — confident cases land in the database, searchable and exportable.
 
@@ -77,18 +77,9 @@ the network path, not a bad key. Either use a VPN, or route through OpenRouter:
 fraction of a cent. With no credit on the account, set `OPENROUTER_MODEL` to a free model
 such as `z-ai/glm-5.2:free` instead.
 
-## Personas
+## Persona
 
-Auto-picked from the first messages, or chosen from the dropdown in the chat header.
-Once picked they lock, so the character does not drift mid-conversation.
-
-| ID | Character | Typical lure |
-|---|---|---|
-| student | Lin Yuan, mainland university student | internships, 兼职, campus |
-| elder | Chen Shufen, retired | bank / police / family emergency |
-| crypto | Marcus Hale, retail trader | groups, wallets, guaranteed ROI |
-| job_seeker | Wei Na, laid off | HR, task gigs, training fees |
-
+Every session is **Ava Lin**, a 29-year-old graphic designer in Hong Kong on Tinder.
 The decoy plays naive and stalls, but never sends money, OTPs, seed phrases, or ID.
 It does push for *their* details — which account, which wallet, which link — because that
 is what ends up in the case file.
@@ -99,7 +90,7 @@ Ordinary chat with no fraud pattern: after a few turns the decoy wraps up and go
 
 A case is filed automatically when the verdict is `scammer`, the score clears
 `DECOY_AUTO_RECORD_SCORE` (70) and confidence clears `DECOY_AUTO_RECORD_CONFIDENCE` (60).
-You can also file one by hand at any point with **Flag as scammer**. Benign conversations
+You can also file one by hand at any point with **Flag as swindler**. Benign conversations
 are never stored. Cases upsert as the chat continues, so a case grows instead of duplicating.
 
 Each case holds the verdict and analyst notes, the full transcript, and the extracted
@@ -118,9 +109,9 @@ SQLite at `data/decoy.db` (override with `DECOY_DB_PATH`), three tables: `cases`
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/session` | new session, optional `persona_id` |
+| POST | `/api/session` | new session, optional `persona_id` (`dating` only) |
 | POST | `/api/chat` | send a message, get reply + verdict + intel |
-| POST | `/api/session/{id}/persona` | switch the decoy mid-conversation |
+| POST | `/api/session/{id}/persona` | confirm the decoy (`dating` only) |
 | POST | `/api/session/{id}/flag` | file the case by hand |
 | GET | `/api/cases?q=` | search cases |
 | GET | `/api/cases/{case_id}` | full case with IOCs, transcript, related cases |
@@ -134,9 +125,9 @@ SQLite at `data/decoy.db` (override with `DECOY_DB_PATH`), three tables: `cases`
 ## Checking it without a browser
 
 ```bash
-python scripts/smoke_test.py job     # also: elder, crypto, student
+python scripts/smoke_test.py dating
 python scripts/api_check.py          # against a running server
-python scripts/repro.py "hi grandma, it's me"   # one turn, prints which brain answered
+python scripts/repro.py "hey ava, I matched you on tinder"   # one turn, prints which brain answered
 ```
 
 ## Scope

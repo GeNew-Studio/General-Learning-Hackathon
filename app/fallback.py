@@ -9,14 +9,6 @@ from app.signals import extract_signals, heuristic_score
 
 _ZH = re.compile(r"[\u4e00-\u9fff]")
 
-_LURE_HINTS: list[tuple[str, tuple[str, ...]]] = [
-    ("dating", ("tinder", "bumble", "hinge", "private jet", "dating", "soulmate", "my security", "digital trail", "diamond")),
-    ("job_seeker", ("hr", "hiring", "salary", "internship", "兼职", "招聘", "面试", "岗位", "task", "remote job", "培训费")),
-    ("crypto", ("btc", "eth", "usdt", "wallet", "seed", "crypto", "trading", "apy", "钱包", "比特币", "合约", "收益")),
-    ("elder", ("police", "bank", "grandson", "parcel", "pension", "公安", "法院", "客服", "快递", "验证码", "冻结")),
-    ("student", ("campus", "dorm", "scholarship", "同学", "学校", "兼职", "学分")),
-]
-
 
 def _zh(text: str) -> bool:
     return bool(_ZH.search(text or ""))
@@ -25,67 +17,12 @@ def _zh(text: str) -> bool:
 def pick_persona(text: str, locked: str | None) -> tuple[str, str, bool]:
     if locked:
         return locked, "Persona already locked.", True
-    blob = (text or "").lower()
-    scores: dict[str, int] = {pid: 0 for pid in PERSONAS}
-    for pid, words in _LURE_HINTS:
-        scores[pid] = sum(1 for w in words if w in blob)
-    best = max(scores, key=lambda k: scores[k])
-    if scores[best] == 0:
-        return DEFAULT_PERSONA_ID, "Opener is thin; defaulting to student until the lure is clear.", False
-    return best, f"Matched {PERSONAS[best]['role']} lure language.", True
+    return DEFAULT_PERSONA_ID, "", True
 
 
 # Offline lines cycle so a long chat does not repeat one sentence. Each rung asks
 # for one more piece of the operation, mirroring the bait goal the model would set.
 _BAIT_LINES: dict[str, dict[str, list[str]]] = {
-    "student": {
-        "en": [
-            "Wait, a training fee first? I’m kinda broke this month… can I try two days unpaid?",
-            "Okay but where would I even send it — do you have an account or a link?",
-            "My roommate got scammed like this. Who do I contact if something goes wrong? Got a number?",
-        ],
-        "zh": [
-            "还要先交培训费吗…我这个月生活费有点紧，能先做两天看看吗？",
-            "那我打到哪里呀？有账号还是链接？",
-            "我室友被骗过…出问题我找谁？你有电话或者微信吗？",
-        ],
-    },
-    "elder": {
-        "en": [
-            "Are you from the bank? Speak slowly — how much do I need to move?",
-            "Which account is the safe one? Read me the number, I’ll write it down.",
-            "My son handles my phone. What’s your name and office number so he can call back?",
-        ],
-        "zh": [
-            "你们是银行的吗？我耳朵不好，你再说一遍要我转多少？",
-            "安全账户是哪个呀？你把卡号念一遍，我拿笔记下来。",
-            "我儿子管我手机的。你叫什么名字，单位电话多少？让他回个电话。",
-        ],
-    },
-    "crypto": {
-        "en": [
-            "What’s the actual APY? And who’s running the desk?",
-            "Send the wallet address, I’ll test with dust first. Seed phrase is a no.",
-            "Which exchange do you clear through? Drop the group link and your handle.",
-        ],
-        "zh": [
-            "到底多少APY？盘子谁在做？",
-            "把钱包地址发来，我先小额试，助记词免谈。",
-            "你们走哪个交易所？群链接和你的联系方式发一下。",
-        ],
-    },
-    "job_seeker": {
-        "en": [
-            "How does the pay work? If there’s an upfront fee I need details — I got burned once.",
-            "Which account do I pay into? Company name and number, please.",
-            "Can you send the company site and your work contact? I want to check it’s registered.",
-        ],
-        "zh": [
-            "工资怎么结？要先交钱我得问清楚，我上次被骗过。",
-            "交到哪个账户？公司名字和账号发我看看。",
-            "官网和你的工作联系方式发一下，我想查一下是不是正规公司。",
-        ],
-    },
     "dating": {
         "en": [
             "That’s a lot of money… which bank do I even send it to?",
@@ -101,31 +38,24 @@ _BAIT_LINES: dict[str, dict[str, list[str]]] = {
 }
 
 _OPENERS = {
-    "student": ("Hey — who is this? I’m in the dorm.", "嗨，你是？我在宿舍呢。"),
-    "elder": ("Hello? Who is calling — I only just learned this app.", "哎你是哪位呀？我刚学会用这个。"),
-    "crypto": ("Go on. What are we looking at.", "说，什么盘。"),
-    "job_seeker": ("Hi — is this about a role?", "你好，是招聘的吗？"),
     "dating": ("Hi — do I know you from Tinder?", "嗨，我们是在Tinder上匹配的吗？"),
 }
 
 _EXITS = {
-    "student": ("Ah I think I’ve got the wrong chat — gonna go study. Take care.", "嗯我好像认错人了，那我先去写作业了，再见。"),
-    "elder": ("Oh — then I won’t keep you. I’ll go eat. Take care, dear.", "哦哦，那不打扰你了，我先去吃饭。保重。"),
-    "crypto": ("Alright, I’m gonna go stare at charts. Later.", "行吧那我先看盘了。"),
-    "job_seeker": ("Okay — I’ll keep sending CVs. Best of luck.", "好的那我继续投简历了，祝顺利。"),
     "dating": ("Okay I think I’ll leave it here. Take care.", "好吧那我先这样，你保重。"),
 }
 
 
 def _reply(persona_id: str, user_text: str, *, exiting: bool, scammer: bool, turn: int) -> str:
     zh = _zh(user_text)
+    pid = persona_id if persona_id in PERSONAS else DEFAULT_PERSONA_ID
     if exiting:
-        en, cn = _EXITS[persona_id]
+        en, cn = _EXITS[pid]
         return cn if zh else en
     if scammer:
-        lines = _BAIT_LINES[persona_id]["zh" if zh else "en"]
+        lines = _BAIT_LINES[pid]["zh" if zh else "en"]
         return lines[max(0, turn - 1) % len(lines)]
-    en, cn = _OPENERS[persona_id]
+    en, cn = _OPENERS[pid]
     return cn if zh else en
 
 

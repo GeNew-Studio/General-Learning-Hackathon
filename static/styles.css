@@ -53,27 +53,6 @@ html, body {
   flex-shrink: 0;
 }
 
-.mode-switch {
-  display: flex;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background: var(--bg-3);
-}
-.mode-btn {
-  background: transparent;
-  color: var(--muted);
-  border-radius: 0;
-  padding: 0.35rem 0.7rem;
-  font-weight: 650;
-  font-size: 0.8rem;
-}
-.mode-btn:hover { color: var(--text); }
-.mode-btn.active {
-  background: var(--honey);
-  color: var(--ink);
-}
-
 .brand { display: flex; gap: 0.75rem; align-items: center; margin-right: auto; }
 .brand strong { display: block; letter-spacing: 0.04em; }
 .sub { display: block; color: var(--muted); font-size: 0.78rem; }
@@ -165,13 +144,6 @@ button:disabled { opacity: 0.5; cursor: wait; }
   text-overflow: ellipsis;
 }
 
-.persona-picker { display: flex; align-items: center; gap: 0.45rem; flex-shrink: 0; }
-.persona-picker span {
-  color: var(--muted);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
 select, input[type="search"] {
   background: var(--bg-3);
   color: var(--text);

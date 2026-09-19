@@ -12,7 +12,7 @@ never mentioned by the decoy.
 
 - Python FastAPI (`app/main.py`) + vanilla `static/` frontend, two tabs: Live chat and Case files. Palette: `#00C8CB` / `#00A3B0` accents on `#0B1020` navy, `#334155` lines, `#E2E8F0` text.
 - Local host: `npm run dev` (`scripts/dev.js`) creates `.venv` if needed, installs `requirements.txt`, and starts uvicorn with reload on port 8787.
-- Header switch (top right): **1** (scripted) vs **2** (live model, default). Do not show the word “demo” in the UI except as internal mode ids. Mode 1 fuzzy-matches a canned script for the selected decoy (`elder` family-emergency, `job_seeker` task-job, `crypto` airdrop, `student` 公检法, `dating` Tinder romance / emergency-loan) and returns fixed victim lines; unmatched lines, further turns, or mode 2, use the live model. Analyst score and the fraud-report ticks come from `/api/chat` (or seeded demo detection). Score climbs with the lure and jumps when a bank account or wallet is given; that auto-files the case and plays the police/bank handover. `/api/chat` is unchanged — scripted history is appended via `POST /api/session/{id}/seed`. Default decoy is Ava Lin.
+- Live chat talks to the live model as Ava Lin. Do not show a 1/2 mode switch. Do not show the word “demo” in the UI except as internal mode ids. Analyst score and the fraud-report ticks come from `/api/chat`. Score climbs with the lure and jumps when a bank account or wallet is given; that auto-files the case and plays the police/bank handover. The only decoy is Ava Lin.
 - Tinder skin (`/tinder`) talks to the live model as Ava. Canned dating turns only run if you open `/tinder?script=1`.
 - SQLite at `data/decoy.db` (`app/db.py`), gitignored — tables `cases`, `case_iocs`, `case_messages`
 - Serve on port 8787 — port 8000 is blocked on this machine
@@ -45,14 +45,12 @@ never mentioned by the decoy.
 
 - One model call per turn returns the in-character reply, the verdict, and the intel object
   (`app/agent.py`). `app/fallback.py` runs when no provider answers and the UI labels it `local-fallback`.
-- Five personas: `student` (Lin Yuan), `elder` (Chen Shufen), `crypto` (Marcus Hale),
-  `job_seeker` (Wei Na), `dating` (Ava Lin). Auto-picked from the first messages, or forced from the dropdown; locks once set.
-  Demo scripts lock that decoy until the canned turns are done (`elder`, `job_seeker`, `crypto`, `student`, `dating`).
+- One persona: `dating` (Ava Lin). Sessions lock to her immediately. Live chat always uses the live model. Canned dating turns only run on `/tinder?script=1`.
 - Reply in the user's language. Benign chats wrap up after ≥3 turns and go quiet.
 - Intel accumulates across turns in `app/intel.py` (identity / contact / payment /
   infrastructure / playbook), model output merged with a regex safety net.
 - Cases file automatically at score ≥ `DECOY_AUTO_RECORD_SCORE` and confidence ≥
-  `DECOY_AUTO_RECORD_CONFIDENCE`, or manually via **Flag as scammer**. Upsert per session.
+  `DECOY_AUTO_RECORD_CONFIDENCE`, or manually via **Flag as swindler**. Upsert per session.
   Benign sessions are never stored.
 - Repeated values across cases surface as "shared infrastructure".
 

@@ -11,16 +11,19 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8787"
 
 def main() -> None:
     with httpx.Client(base_url=BASE, timeout=90) as client:
-        session = client.post("/api/session", json={"persona_id": "crypto"}).json()
+        session = client.post("/api/session", json={"persona_id": "dating"}).json()
         sid = session["session_id"]
         print("session:", sid, "| persona:", session["persona"]["name"], "| forced:", session["persona_forced"])
 
-        switched = client.post(f"/api/session/{sid}/persona", json={"persona_id": "elder"}).json()
-        print("switched to:", switched["persona"]["name"], "| forced:", switched["persona_forced"])
+        switched = client.post(f"/api/session/{sid}/persona", json={"persona_id": "dating"}).json()
+        print("held as:", switched["persona"]["name"], "| forced:", switched["persona_forced"])
 
         chat = client.post(
             "/api/chat",
-            json={"session_id": sid, "message": "Hi grandma, it's your grandson, I'm in trouble and need 5000 fast."},
+            json={
+                "session_id": sid,
+                "message": "Hey Ava, I'm in trouble and need 25000 fast. Transfer HSBC 004-218739-883.",
+            },
         ).json()
         print("reply:", chat["reply"][:90])
         print("persona held:", chat["persona"]["name"], "| score:", chat["detection"]["score"])

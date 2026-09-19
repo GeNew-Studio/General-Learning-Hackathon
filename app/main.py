@@ -74,14 +74,15 @@ class ConfigureIn(BaseModel):
 def _new_session(persona_id: str | None = None) -> dict[str, Any]:
     if persona_id and persona_id not in PERSONA_IDS:
         raise HTTPException(400, f"Unknown persona '{persona_id}'")
+    pid = persona_id or DEFAULT_PERSONA_ID
     sid = str(uuid.uuid4())
     session = {
         "id": sid,
-        "persona_id": persona_id,
-        "persona_name": PERSONAS[persona_id]["name"] if persona_id else None,
-        "persona_locked": bool(persona_id),
-        "persona_forced": bool(persona_id),
-        "persona_pick_reason": "Chosen by the operator." if persona_id else "",
+        "persona_id": pid,
+        "persona_name": PERSONAS[pid]["name"],
+        "persona_locked": True,
+        "persona_forced": True,
+        "persona_pick_reason": "",
         "status": "active",
         "ended": False,
         "end_reason": None,
@@ -144,10 +145,6 @@ def _session_or_404(session_id: str) -> dict[str, Any]:
 _HSBC_ACCT = re.compile(r"\bHSBC\s+(\d{3}[- ]\d{6,9}[- ]\d{2,4})\b", re.I)
 _LOOSE_ETH = re.compile(r"\b0x[a-fA-F0-9]{20,40}\b")
 _DEMO_CATEGORY = {
-    "elder": "family emergency",
-    "job_seeker": "task / employment scam",
-    "crypto": "crypto airdrop",
-    "student": "authority impersonation",
     "dating": "romance / emergency-loan",
 }
 _DATING_MONEY = re.compile(
@@ -398,15 +395,8 @@ async def chat(body: ChatIn):
         raise HTTPException(400, "Empty message")
 
     if session["ended"]:
-        quiet = {
-            "student": "I already said bye — take care.",
-            "elder": "好了孩子，我先不聊了。保重。",
-            "crypto": "I'm out. Good luck with whatever this was.",
-            "job_seeker": "I'll stop here. Best of luck with the search.",
-            "dating": "I think I need some space. Take care.",
-        }
-        pid = session["persona_id"] or DEFAULT_PERSONA_ID
-        return _public(session, quiet.get(pid, "I'm going to leave this here."))
+        quiet = "I think I need some space. Take care."
+        return _public(session, quiet)
 
     session["messages"].append({"role": "user", "content": text})
     user_turns = len([m for m in session["messages"] if m["role"] == "user"])

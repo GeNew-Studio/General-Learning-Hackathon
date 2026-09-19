@@ -22,7 +22,7 @@ You MUST return a single json object. No markdown, no extra text. Some hosts ign
 
 json schema:
 {
-  "persona_id": "student" | "elder" | "crypto" | "job_seeker" | "dating",
+  "persona_id": "dating",
   "lock_persona": boolean,
   "persona_pick_reason": string,
   "reply": string,
@@ -56,16 +56,11 @@ json schema:
   }
 }
 
-Personas (pick ONE):
-- student: mainland Chinese university student (Lin Yuan / 林远). Use for campus, internships, 兼职, youthful chat, generic openers if nothing else fits.
-- elder: retired elder (Chen Shufen / 陈淑芬). Use for banks, police, family emergency, parcels, pensions, 'customer service'.
-- crypto: crypto investor (Marcus Hale). Use for coins, wallets, trading groups, OTC, ROI.
-- job_seeker: job seeker (Wei Na / 韦娜). Use for HR, recruiters, task gigs, interviews, salary.
-- dating: dating-app user (Ava Lin / 林艾娃). Use for Tinder/Bumble/HK dating, romance, private jets, bodyguards, emergency loan, investment after love-bombing.
+Persona:
+- Always Ava Lin (林艾娃), dating-app user. persona_id is always "dating". Do not invent another character.
 
 Persona rules:
-- If a persona is ALREADY LOCKED in the session, you MUST keep that persona_id. Do not switch.
-- If not locked: choose the best fit from the other party's messages. lock_persona=true once the lure type is clear. If they only said hi, pick dating when this is a dating-app thread, otherwise student, lock_persona=false.
+- Stay as Ava. lock_persona=true.
 - reply MUST stay in character. 1-3 short chat bubbles worth of text (you may use \\n for a second line).
 - Mirror the other party's language (English → English, 简体/繁體 → same). Mix is ok if they mix.
 - Never mention AI, honeypot, detection, score, persona, or that this is a demo IN THE REPLY.
@@ -120,24 +115,17 @@ def _allow_fallback() -> bool:
 
 
 def _system_prompt(session: dict[str, Any]) -> str:
-    locked = session.get("persona_id") if session.get("persona_locked") else None
-    pid = locked if locked in PERSONA_IDS else None
-    extra = []
-    if pid:
-        persona = PERSONAS[pid]
-        extra.append(f"You are locked as {persona['name']} ({pid}). Stay in this voice:\n{persona['voice']}")
-    if pid == "dating" or (session.get("persona_forced") and session.get("persona_id") == "dating"):
-        extra.append(
-            "This thread is Tinder DMs. The other party is a match pretending to be interested. "
-            "Stay as Ava. Mirror their language.\n"
-            "If they ask for money or a loan, you MUST stay in-character as a willing, slightly dizzy victim.\n"
-            "Good reply: \"ok wait let me open hsbc, the app is spinning 😭 send the account number again? "
-            "and the name on it? fps or payme might be easier\"\n"
-            "Bad reply: \"we just matched, I'm not sending 25k to a stranger, call your bank\". Never use that voice.\n"
-            "You never actually send. You only stall and get THEIR FPS / bank / PayMe / wallet on the record."
-        )
-    if not extra:
-        return SYSTEM_PROMPT
+    persona = PERSONAS[DEFAULT_PERSONA_ID]
+    extra = [
+        f"You are locked as {persona['name']} ({persona['id']}). Stay in this voice:\n{persona['voice']}",
+        "This thread is Tinder DMs. The other party is a match pretending to be interested. "
+        "Stay as Ava. Mirror their language.\n"
+        "If they ask for money or a loan, you MUST stay in-character as a willing, slightly dizzy victim.\n"
+        "Good reply: \"ok wait let me open hsbc, the app is spinning 😭 send the account number again? "
+        "and the name on it? fps or payme might be easier\"\n"
+        "Bad reply: \"we just matched, I'm not sending 25k to a stranger, call your bank\". Never use that voice.\n"
+        "You never actually send. You only stall and get THEIR FPS / bank / PayMe / wallet on the record.",
+    ]
     return SYSTEM_PROMPT + "\n\n" + "\n".join(extra)
 
 
@@ -177,10 +165,8 @@ async def complete(session: dict[str, Any], user_message: str) -> dict[str, Any]
 
 
 def _normalize(parsed: dict[str, Any], locked: str | None, model_label: str) -> dict[str, Any]:
-    persona_id = parsed.get("persona_id") or locked or DEFAULT_PERSONA_ID
-    if persona_id not in PERSONA_IDS:
-        persona_id = locked or DEFAULT_PERSONA_ID
-    if locked:
+    persona_id = DEFAULT_PERSONA_ID
+    if locked in PERSONA_IDS:
         persona_id = locked
 
     try:
@@ -212,7 +198,7 @@ def _normalize(parsed: dict[str, Any], locked: str | None, model_label: str) -> 
 
     return {
         "persona_id": persona_id,
-        "lock_persona": bool(parsed.get("lock_persona")) or bool(locked),
+        "lock_persona": True,
         "persona_pick_reason": str(parsed.get("persona_pick_reason") or "").strip(),
         "reply": reply,
         "score": score,
