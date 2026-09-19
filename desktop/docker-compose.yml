@@ -1,0 +1,14 @@
+services:
+  openvscode:
+    image: gitpod/openvscode-server:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ..:/home/workspace:cached
+    command:
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "3000"
+      - --without-connection-token
+      - /home/workspace

@@ -1,0 +1,26 @@
+---
+description: VibeBlog — VS Code extension is the product
+alwaysApply: true
+---
+
+# VibeBlog
+
+Startup product: **real VS Code** + teaching layer. Not a Monaco quiz site.
+
+## Primary codebase
+
+- **`extension/`** — ship this (Guide webview, journal, full/compact UI commands). F5 from repo root.
+- **`workspace/catch-fruit/`** — sample multi-language project for lessons.
+- **`src/engine/`** — lesson machine; sync to extension via `npm run sync:extension`.
+- **`desktop/`** — OpenVSCode Docker for branded IDE shell (Phase 1b).
+- **Root Vite app** — internal demo only; flat workspace + localStorage; Explorer 右鍵／F2 重新命名、刪除、複製。
+
+## UI modes
+
+- **Full** (`vibeblog.setFullUi`) — adult/university default; build IDE here first, simplify later.
+- **Compact** (`vibeblog.setCompactUi`) — primary-school preset (copy density), same IDE capabilities.
+
+## Do not
+
+- Do not treat the web Monaco workbench as the main product.
+- Do not start with a full `microsoft/vscode` fork until extension + OpenVSCode packaging prove the loop.

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src {{cspSource}}; script-src {{cspSource}}; img-src {{cspSource}} data:;"
+    />
+    <link rel="stylesheet" href="{{styleUri}}" />
+  </head>
+  <body>
+    <p class="progress" id="progress"></p>
+    <p class="kicker" id="kicker"></p>
+    <p class="body" id="body"></p>
+    <p class="concept" id="concept" hidden></p>
+    <div class="anim" id="anim"></div>
+    <div class="actions">
+      <button type="button" id="back">上一關</button>
+      <button type="button" id="next">下一關</button>
+    </div>
+    <p class="hint" id="hint"></p>
+    <script src="{{machineUri}}"></script>
+    <script src="{{scriptUri}}"></script>
+  </body>
+</html>

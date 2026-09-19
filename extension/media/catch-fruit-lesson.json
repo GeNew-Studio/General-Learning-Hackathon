@@ -1,0 +1,442 @@
+{
+  "id": "catch-fruit",
+  "title": {
+    "primary": "接水果",
+    "secondary": "Catch fruit"
+  },
+  "steps": [
+    {
+      "id": "goal",
+      "template": "decompose",
+      "play": false,
+      "copy": {
+        "primary": {
+          "kicker": "目標",
+          "body": "我們要做接水果。先想，再做。"
+        },
+        "secondary": {
+          "kicker": "Goal",
+          "body": "目標是可玩的接水果，不是一段能跑的 code。先 decomposition，再實作。",
+          "concept": "decomposition"
+        }
+      },
+      "anim": {
+        "whole": "接水果",
+        "nodes": [
+          {
+            "icon": "🧺",
+            "label": "籃子"
+          },
+          {
+            "icon": "🍎",
+            "label": "水果"
+          },
+          {
+            "icon": "💥",
+            "label": "碰到"
+          },
+          {
+            "icon": "1",
+            "label": "分數"
+          }
+        ]
+      }
+    },
+    {
+      "id": "split",
+      "template": "decompose",
+      "play": false,
+      "copy": {
+        "primary": {
+          "kicker": "拆開",
+          "body": "拆成四塊：籃子、水果、碰到、分數。"
+        },
+        "secondary": {
+          "kicker": "Split",
+          "body": "basket（input）、fruit（spawn + gravity）、collision、score（state）。",
+          "concept": "decomposition"
+        }
+      },
+      "anim": {
+        "whole": "一個遊戲",
+        "nodes": [
+          {
+            "icon": "🧺",
+            "label": "籃子"
+          },
+          {
+            "icon": "🍎",
+            "label": "水果"
+          },
+          {
+            "icon": "💥",
+            "label": "碰到"
+          },
+          {
+            "icon": "1",
+            "label": "分數"
+          }
+        ]
+      }
+    },
+    {
+      "id": "structure",
+      "template": "decompose",
+      "play": false,
+      "copy": {
+        "primary": {
+          "kicker": "結構",
+          "body": "每塊只做一件事。籃子負責移動。"
+        },
+        "secondary": {
+          "kicker": "Structure",
+          "body": "一塊一個責任。之後改速度，不該動到計分邏輯。",
+          "concept": "single responsibility"
+        }
+      },
+      "anim": {
+        "whole": "誰做什麼",
+        "nodes": [
+          {
+            "icon": "🧺",
+            "label": "只移動"
+          },
+          {
+            "icon": "🍎",
+            "label": "只掉落"
+          },
+          {
+            "icon": "💥",
+            "label": "只判斷"
+          },
+          {
+            "icon": "1",
+            "label": "只記住"
+          }
+        ]
+      }
+    },
+    {
+      "id": "basket-cause",
+      "template": "cause",
+      "play": false,
+      "copy": {
+        "primary": {
+          "kicker": "因果",
+          "body": "按鍵 → 位置變 → 籃子跟著走。"
+        },
+        "secondary": {
+          "kicker": "Cause",
+          "body": "keydown → 改 x → render 用新 x。輸入、狀態、畫面分開。",
+          "concept": "input → state → view"
+        }
+      },
+      "anim": {
+        "chain": [
+          {
+            "label": "按鍵"
+          },
+          {
+            "label": "x 改變"
+          },
+          {
+            "label": "籃子走"
+          }
+        ]
+      }
+    },
+    {
+      "id": "basket-patch",
+      "template": "cause",
+      "play": true,
+      "unlock": {
+        "basket": true
+      },
+      "copy": {
+        "primary": {
+          "kicker": "試玩",
+          "body": "左右移動籃子。看完再下一關。"
+        },
+        "secondary": {
+          "kicker": "Patch",
+          "body": "左右鍵只動籃子。水果還沒出現是正常的。",
+          "concept": "incremental verify"
+        }
+      },
+      "anim": {
+        "chain": [
+          {
+            "label": "左 / 右"
+          },
+          {
+            "label": "改位置"
+          },
+          {
+            "label": "畫面動"
+          }
+        ]
+      },
+      "patch": "basket.x += key === \"→\" ? 8 : -8"
+    },
+    {
+      "id": "fruit-flow",
+      "template": "flow",
+      "play": false,
+      "copy": {
+        "primary": {
+          "kicker": "資料流",
+          "body": "水果從上面來，往下掉。"
+        },
+        "secondary": {
+          "kicker": "Flow",
+          "body": "spawn 在頂部 → 每幀 y += speed → 出界就消失。",
+          "concept": "data flow"
+        }
+      },
+      "anim": {
+        "from": "上面",
+        "to": "下面",
+        "token": "🍎",
+        "caption": "位置一直在變"
+      }
+    },
+    {
+      "id": "fruit-patch",
+      "template": "flow",
+      "play": true,
+      "unlock": {
+        "fruit": true
+      },
+      "copy": {
+        "primary": {
+          "kicker": "試玩",
+          "body": "水果會掉了。先看，再下一關。"
+        },
+        "secondary": {
+          "kicker": "Patch",
+          "body": "只有掉落，還沒有 collision。先觀察資料在動。",
+          "concept": "observe before wiring"
+        }
+      },
+      "anim": {
+        "from": "出現",
+        "to": "掉下去",
+        "token": "🍎",
+        "caption": "現在還不能接"
+      },
+      "patch": "fruit.y += speed"
+    },
+    {
+      "id": "catch-cause",
+      "template": "cause",
+      "play": true,
+      "unlock": {
+        "catch": true
+      },
+      "copy": {
+        "primary": {
+          "kicker": "碰到",
+          "body": "籃子碰到水果，才算接到。"
+        },
+        "secondary": {
+          "kicker": "Collision",
+          "body": "重疊才算 catch。看起來靠近不算。",
+          "concept": "collision"
+        }
+      },
+      "anim": {
+        "chain": [
+          {
+            "label": "籃子"
+          },
+          {
+            "label": "重疊"
+          },
+          {
+            "label": "接到"
+          }
+        ]
+      },
+      "patch": "if (overlaps(basket, fruit)) caught = true"
+    },
+    {
+      "id": "score-flow",
+      "template": "flow",
+      "play": true,
+      "unlock": {
+        "score": true
+      },
+      "copy": {
+        "primary": {
+          "kicker": "分數",
+          "body": "接到 → 分數 +1。沒接到不加。"
+        },
+        "secondary": {
+          "kicker": "State",
+          "body": "catch 才 score += 1。畫面顯示狀態，不自己發明數字。",
+          "concept": "state"
+        }
+      },
+      "anim": {
+        "from": "接到",
+        "to": "分數",
+        "token": "+1",
+        "caption": "數字跟規則走"
+      },
+      "patch": "if (caught) score += 1"
+    },
+    {
+      "id": "play-all",
+      "template": "cause",
+      "play": true,
+      "copy": {
+        "primary": {
+          "kicker": "連起來",
+          "body": "三塊連在一起。玩一下。"
+        },
+        "secondary": {
+          "kicker": "Integrate",
+          "body": "輸入 → 狀態 → 碰撞 → 分數。對照著玩。",
+          "concept": "system"
+        }
+      },
+      "anim": {
+        "chain": [
+          {
+            "label": "移動"
+          },
+          {
+            "label": "碰到"
+          },
+          {
+            "label": "加分"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ux-fair",
+      "template": "tradeoff",
+      "play": true,
+      "copy": {
+        "primary": {
+          "kicker": "好不好用",
+          "body": "太快不公平，太慢沒意思。選一個速度。"
+        },
+        "secondary": {
+          "kicker": "UX",
+          "body": "公平 vs 挑戰。速度是體驗參數，不是能跑就好。",
+          "concept": "fairness"
+        }
+      },
+      "anim": {
+        "hint": "選一邊，才可以下一關",
+        "left": {
+          "id": "fair",
+          "title": "慢一點",
+          "cost": "比較公平"
+        },
+        "right": {
+          "id": "fast",
+          "title": "更快",
+          "cost": "比較難"
+        }
+      }
+    },
+    {
+      "id": "safety-score",
+      "template": "tradeoff",
+      "play": true,
+      "copy": {
+        "primary": {
+          "kicker": "安全",
+          "body": "不能偷偷改分數。只有接到才加。"
+        },
+        "secondary": {
+          "kicker": "Safety",
+          "body": "不要信任在畫面改數字。計分必須由規則寫入。",
+          "concept": "client trust"
+        }
+      },
+      "anim": {
+        "hint": "選一邊，才可以下一關",
+        "left": {
+          "id": "cheat",
+          "title": "改成 999",
+          "cost": "這是作弊"
+        },
+        "right": {
+          "id": "lock",
+          "title": "只有接到",
+          "cost": "規則說了算"
+        }
+      }
+    },
+    {
+      "id": "structure-recap",
+      "template": "decompose",
+      "play": true,
+      "copy": {
+        "primary": {
+          "kicker": "再看結構",
+          "body": "移動 / 掉落 / 碰到 / 記住分數。各做各的。"
+        },
+        "secondary": {
+          "kicker": "Recap",
+          "body": "改 UX 只動 speed；改安全只動誰能寫 score。",
+          "concept": "boundaries"
+        }
+      },
+      "anim": {
+        "whole": "還是四塊",
+        "nodes": [
+          {
+            "icon": "🧺",
+            "label": "移動"
+          },
+          {
+            "icon": "🍎",
+            "label": "掉落"
+          },
+          {
+            "icon": "💥",
+            "label": "碰到"
+          },
+          {
+            "icon": "1",
+            "label": "分數"
+          }
+        ]
+      }
+    },
+    {
+      "id": "done",
+      "template": "cause",
+      "play": true,
+      "copy": {
+        "primary": {
+          "kicker": "做完了",
+          "body": "試著講出「為什麼這樣做」。"
+        },
+        "secondary": {
+          "kicker": "Explain",
+          "body": "用自己的話：分解 → 因果 → 資料流 → 權衡。這就是 method of solving。",
+          "concept": "method of solving"
+        }
+      },
+      "anim": {
+        "chain": [
+          {
+            "label": "拆開"
+          },
+          {
+            "label": "看見因果"
+          },
+          {
+            "label": "講得出"
+          }
+        ]
+      }
+    }
+  ]
+}
