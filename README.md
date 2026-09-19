@@ -108,7 +108,9 @@ reasons.
 
 **2. You talk, Faker watches.** A clear profile opens an ordinary thread. The replies from
 the user's account are the user's own ordinary dating chat — Faker is not baiting yet, it
-is only scoring. The strip above the thread shows the live score and what it thinks.
+is only scoring. The strip above the thread shows the live score and what it thinks, and it
+opens on the same number the card showed: a match the deck flagged at 31/100 starts the
+chat at 31, not at zero.
 
 This is the point the pre-screen cannot solve: a scammer with real stolen-but-clean photos
 and a two-year-old account passes screening. Intent only shows up in what they say.
@@ -137,10 +139,10 @@ Every threshold below is in the code, not in a slide.
 | Decision | Rule | Where |
 |---|---|---|
 | **Block before contact** | Pre-screen risk ≥ 70. Chat never opens; API returns 403. | `app/profiles.py`, `main._match_context` |
-| **Watch but allow** | Pre-screen risk 30–69. The monitor starts at 40% of the pre-screen risk instead of zero. | `main._opening_detection` |
+| **Watch but allow** | Pre-screen risk 30–69. The chat monitor opens on exactly the number the deck card showed, and that risk stays a floor under the live score — a synthetic photo is still synthetic however politely they chat. | `main._opening_detection`, `main.chat` |
 | **Takeover — money route** | The newest message hits any money pattern. Checked *before* the model is called, so the very reply to the money ask is already the decoy's. | `signals.MONEY_SIGNALS`, `main.chat` |
 | **Takeover — judgement route** | No money named yet, but the model returns `scammer` and the blended score is ≥ 65 — a fake identity unravelling, isolation pressure, a push off the app. | `main.chat` |
-| **Score** | 72% model judgement + 28% rule hits, 0–100. Capped to 92 once a payment rail lands. | `main._blend_score` |
+| **Score** | 72% model judgement + 28% rule hits, 0–100, never below the pre-screen risk. Jumps to 92 once a payment rail lands. | `main._blend_score`, `main.chat` |
 | **Close the case** | Verdict `scammer` **and** score ≥ 70 **and** confidence ≥ 60 **and** a bank account or wallet is in the intel. | `main._maybe_record` |
 | **Do not close** | Everything else. A verdict on its own is not a case — with no account there is nothing to freeze — so the decoy keeps stalling and asking. | `TAKEOVER_PROMPT` in `app/agent.py` |
 | **Drop it** | Ordinary chat: ≥ 3 turns, score ≤ 32, verdict `benign`, no rule hits, no takeover. The decoy wraps up and goes quiet, and nothing is stored. | `main.chat` |

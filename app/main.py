@@ -134,7 +134,7 @@ def _opening_detection(prescreen: dict[str, Any] | None) -> dict[str, Any]:
     if prescreen:
         reasons = [f"Pre-screen: {prescreen['headline']} ({risk}/100)."] + list(prescreen["reasons"][:2])
     return {
-        "score": round(risk * 0.4),
+        "score": risk,
         "verdict": "uncertain",
         "confidence": 0,
         "reasons": reasons,
@@ -516,7 +516,19 @@ async def chat(body: ChatIn):
             verdict = "uncertain"
         session["status"] = "active" if verdict != "scammer" else "engaged"
 
+    # A synthetic photo and a two-week-old account do not stop being true because the chat
+    # is polite, so the pre-screen risk is a floor under the live score and the monitor
+    # keeps showing the number the deck card showed. The benign exit below still reads the
+    # conversation on its own.
+    conversation_score = score
+    prescreen_risk = int((session.get("prescreen") or {}).get("risk") or 0)
+    floored = prescreen_risk > score
+    if floored:
+        score = prescreen_risk
+
     reasons = list(result["reasons"])
+    if floored:
+        reasons.append(f"Pre-screen risk holds the floor at {prescreen_risk}/100.")
     if signals:
         reasons.append("Rule hits: " + ", ".join(signals))
 
@@ -554,7 +566,7 @@ async def chat(body: ChatIn):
         result["should_exit_benign"]
         and not is_taken_over(session)
         and user_turns >= MIN_TURNS_BEFORE_BENIGN_EXIT
-        and score <= BENIGN_SCORE_CEILING
+        and conversation_score <= BENIGN_SCORE_CEILING
         and verdict == "benign"
         and not signals
     )
