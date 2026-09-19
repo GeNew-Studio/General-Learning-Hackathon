@@ -679,6 +679,34 @@ html, body {
   .chat-head { padding-top: 0.15rem; padding-bottom: 0.35rem; }
 }
 
+/* Caption on the dark stage, outside the phone: says which surface this is and
+   links to the other one. Hidden once the phone goes full-bleed. */
+.stage-note {
+  position: fixed;
+  top: 1rem;
+  left: 1.1rem;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+  color: #8e9bb0;
+  z-index: 10;
+}
+.stage-note strong { color: #e2e8f0; font-size: 0.86rem; letter-spacing: 0.01em; }
+.stage-note a {
+  margin-top: 0.3rem;
+  justify-self: start;
+  color: #00c8cb;
+  text-decoration: none;
+  border: 1px solid #00c8cb55;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+}
+.stage-note a:hover { border-color: #00c8cb; }
+
+@media (max-width: 900px) {
+  .stage-note { display: none; }
+}
+
 /* ------------------------------------------------------- deck & monitor -- */
 
 .deck-view,

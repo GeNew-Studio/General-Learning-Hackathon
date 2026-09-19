@@ -26,6 +26,7 @@ of it. Both run at the same time on port 8787.
 | Who is typing | You play the other party (the scammer). The decoy answers. | You play the match (the scammer). The user's account answers. |
 | What it shows | Live risk score, verdict, why, the fraud report filling in field by field, every stored case. | A deck of screened matches, a chat, a live monitor bar, the takeover banner, the handover animation. |
 | Why it exists | Proves the detection and evidence are real, not scripted. | Proves the experience: the user never has to judge anyone. |
+| How to open | `http://127.0.0.1:8787/` | `http://127.0.0.1:8787/tinder`, or the **Open the dating app ↗** button in the console header |
 | Built from | `static/index.html` + `static/app.js` + `static/styles.css` | `static/tinder.html` + `static/tinder.js` + `static/tinder.css` |
 
 Shared by both: `app/agent.py` (one model call per turn), `app/signals.py` (rule hits),
@@ -150,12 +151,16 @@ Copy `.env.example` to `.env` and fill in a key. First `npm run dev` will create
 npm run dev
 ```
 
-One server, two views — open both:
+One server, two views. Open them in two browser tabs and put them side by side — the
+console is the back office for the very chat running in the phone.
 
-| | |
-|---|---|
-| Analyst console | [http://127.0.0.1:8787/](http://127.0.0.1:8787/) |
-| Tinder demo | [http://127.0.0.1:8787/tinder](http://127.0.0.1:8787/tinder) |
+| | URL | How to get there |
+|---|---|---|
+| Analyst console | [http://127.0.0.1:8787/](http://127.0.0.1:8787/) | the root page |
+| Tinder demo | [http://127.0.0.1:8787/tinder](http://127.0.0.1:8787/tinder) | **Open the dating app ↗** in the console header |
+
+Each surface links to the other, so nobody has to be told the URL: the console has the
+button in its top bar, and the phone screen has **← Analyst console** captioned next to it.
 
 Port 8000 is blocked on this machine.
 
