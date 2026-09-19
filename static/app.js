@@ -86,14 +86,10 @@ const DOSSIER = [
 ];
 
 const PERSONA_ID = "dating";
-const HANDOVER_SCORE = 88;
-const HANDOVER_STEPS = [
-  { at: 400, step: "extract", kicker: "Extracting fraud data" },
-  { at: 3600, step: "pack", kicker: "Sealing packet" },
-  { at: 5200, step: "send", kicker: "Encrypted Fraud Data Transfer" },
-  { at: 7400, step: "notify", kicker: "Delivery confirmation" },
-  { at: 9200, step: "done", kicker: "Handover complete" },
-];
+const handover = FakerHandover.create({
+  root: $("handover"),
+  onStart: () => setBusy(true),
+});
 
 let sessionId = null;
 let busy = false;
@@ -104,8 +100,6 @@ let chatMode = "real";
 let scriptStep = 0;
 let seededCount = 0;
 let demoLog = [];
-let handoverPlayed = false;
-let handoverTimers = [];
 
 function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (c) => ({
@@ -289,108 +283,27 @@ async function checkBrain({ reload = false } = {}) {
 }
 
 function setBusy(on) {
-  busy = on || handoverPlayed;
+  busy = on || handover.played;
   sendBtn.disabled = busy;
-  sendBtn.textContent = on && !handoverPlayed ? "…" : "Send";
-  input.disabled = handoverPlayed;
-  input.placeholder = handoverPlayed
+  sendBtn.textContent = on && !handover.played ? "…" : "Send";
+  input.disabled = handover.played;
+  input.placeholder = handover.played
     ? "Report handed over"
     : on
       ? "Waiting for the decoy…"
       : "Message the decoy…";
 }
 
-function firstList(list) {
-  return (Array.isArray(list) ? list : []).find((v) => String(v || "").trim()) || "";
-}
-
-function dash(value) {
-  const text = String(value || "").trim();
-  return text || "—";
-}
-
-function pad(n) {
-  return String(n).padStart(2, "0");
-}
-
-function localCaseId() {
-  const d = new Date();
-  return `DA-HK-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-}
-
-function fillHandover(data) {
-  const intel = data?.intel || {};
-  const det = data?.detection || {};
-  const identity = intel.identity || {};
-  const contact = intel.contact || {};
-  const pay = intel.payment || {};
-  const caller =
-    identity.alias ||
-    firstList(contact.other_handles) ||
-    firstList(contact.phones) ||
-    firstList(contact.telegram) ||
-    firstList(contact.wechat);
-  const account = firstList(pay.bank_accounts) || firstList(pay.crypto_wallets);
-  const amount = pay.amount_requested || firstList(pay.bank_names);
-  const score = det.score ?? 0;
-  const category = det.scam_category || "";
-  const note = firstList(det.reasons) || category;
-  const caseId = data?.case_id || localCaseId();
-  const bits = [caller, amount, account].filter((v) => String(v || "").trim());
-
-  $("handover-caller").textContent = dash(caller);
-  $("handover-account").textContent = dash(account);
-  $("handover-amount").textContent = dash(amount);
-  $("handover-risk").textContent = category ? `${score} · ${category}` : String(score);
-  $("handover-risk-note").textContent = note;
-  $("handover-case").textContent = caseId;
-  $("handover-packet-line").textContent = bits.length ? bits.join(" · ") : "—";
-}
-
-function setHandoverStep(step, kicker) {
-  const el = $("handover");
-  if (!el) return;
-  el.className = `handover is-on step-${step}`;
-  $("handover-kicker").textContent = kicker;
-}
-
 function clearHandover() {
-  handoverTimers.forEach(clearTimeout);
-  handoverTimers = [];
-  handoverPlayed = false;
-  const el = $("handover");
-  if (el) {
-    el.className = "handover";
-    el.setAttribute("aria-hidden", "true");
-  }
+  handover.reset();
   setBusy(false);
 }
 
-function startHandover(data) {
-  handoverTimers.forEach(clearTimeout);
-  handoverTimers = [];
-  handoverPlayed = true;
-  fillHandover(data);
-  $("handover").setAttribute("aria-hidden", "false");
-  setBusy(true);
-  HANDOVER_STEPS.forEach(({ at, step, kicker }) => {
-    handoverTimers.push(setTimeout(() => setHandoverStep(step, kicker), at));
-  });
-}
-
-function hasPaymentRails(data) {
-  const pay = data?.intel?.payment || {};
-  return Boolean(
-    (Array.isArray(pay.bank_accounts) && pay.bank_accounts.length) ||
-      (Array.isArray(pay.crypto_wallets) && pay.crypto_wallets.length),
-  );
-}
-
 function maybeHandover(data) {
-  if (handoverPlayed) return;
+  if (handover.played) return;
   const manual = Boolean(data?.recorded_now && data?.recorded_by === "manual");
-  if (!hasPaymentRails(data) && !manual) return;
-  startHandover(data);
+  if (!FakerHandover.hasPaymentRails(data) && !manual) return;
+  handover.play(data);
 }
 
 // --------------------------------------------------------------- dossier
@@ -583,7 +496,7 @@ async function playDemoTurn(text) {
     thinking.remove();
     addBubble("system", String(err.message || err));
   } finally {
-    if (!handoverPlayed) {
+    if (!handover.played) {
       setBusy(false);
       input.focus();
     }
@@ -608,7 +521,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  if (busy || handoverPlayed) return;
+  if (busy || handover.played) return;
   if (scriptActive() && demoLineMatches(text, currentDemoScript().turns[scriptStep].scammer)) {
     input.value = "";
     await playDemoTurn(text);
@@ -636,6 +549,9 @@ form.addEventListener("submit", async (e) => {
     applyMode();
     hideOffline();
     thinking.remove();
+    if (data.takeover_now) {
+      addBubble("system", `AI TAKEOVER — ${data.takeover_reason} Faker now runs this chat and baits for the account.`);
+    }
     if (data.reply) addBubble("assistant", data.reply);
     paintIntel(data);
     if (data.recorded_now) {
@@ -653,7 +569,7 @@ form.addEventListener("submit", async (e) => {
       addBubble("system", String(err.message || err));
     }
   } finally {
-    if (!handoverPlayed) {
+    if (!handover.played) {
       setBusy(false);
       input.focus();
     }

@@ -19,9 +19,10 @@ load_dotenv()
 
 from app import db, llm
 from app import intel as intel_mod
-from app.agent import BrainOffline, complete
+from app import profiles as profiles_mod
+from app.agent import BrainOffline, complete, is_taken_over
 from app.personas import DEFAULT_PERSONA_ID, PERSONA_IDS, PERSONAS, public_persona
-from app.signals import extract_signals, heuristic_score
+from app.signals import extract_signals, heuristic_score, money_signals
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC = os.path.join(ROOT, "static")
@@ -52,6 +53,7 @@ class ChatIn(BaseModel):
 
 class SessionIn(BaseModel):
     persona_id: str | None = None
+    profile_id: str | None = None
 
 
 class PersonaIn(BaseModel):
@@ -71,13 +73,40 @@ class ConfigureIn(BaseModel):
     poe_api_key: str | None = None
 
 
-def _new_session(persona_id: str | None = None) -> dict[str, Any]:
+def _match_context(profile_id: str | None) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Resolve a deck profile into chat context. Blocked profiles never open a chat."""
+    if not profile_id:
+        return None, None
+    profile = profiles_mod.PROFILE_BY_ID.get(profile_id)
+    if not profile:
+        raise HTTPException(404, f"Unknown profile '{profile_id}'")
+    prescreen = profiles_mod.screen(profile)
+    if prescreen["verdict"] == "blocked":
+        raise HTTPException(403, "Profile blocked by pre-screen")
+    match = {
+        "id": profile["id"],
+        "name": profile["name"],
+        "age": profile["age"],
+        "job": profile["job"],
+        "bio": profile["bio"],
+        "photos": profiles_mod.photo_urls(profile["id"]),
+    }
+    return match, prescreen
+
+
+def _new_session(persona_id: str | None = None, profile_id: str | None = None) -> dict[str, Any]:
     if persona_id and persona_id not in PERSONA_IDS:
         raise HTTPException(400, f"Unknown persona '{persona_id}'")
     pid = persona_id or DEFAULT_PERSONA_ID
+    match, prescreen = _match_context(profile_id)
     sid = str(uuid.uuid4())
     session = {
         "id": sid,
+        "match": match,
+        "prescreen": prescreen,
+        "phase": "user",
+        "takeover_reason": None,
+        "takeover_turn": None,
         "persona_id": pid,
         "persona_name": PERSONAS[pid]["name"],
         "persona_locked": True,
@@ -91,19 +120,34 @@ def _new_session(persona_id: str | None = None) -> dict[str, Any]:
         "bait_goal": None,
         "case_id": None,
         "recorded_by": None,
-        "detection": {
-            "score": 0,
-            "verdict": "uncertain",
-            "confidence": 0,
-            "reasons": ["Waiting for the first message."],
-            "signals": [],
-            "scam_category": None,
-            "heuristic_score": 0,
-        },
+        "detection": _opening_detection(prescreen),
         "model": None,
     }
     SESSIONS[sid] = session
     return session
+
+
+def _opening_detection(prescreen: dict[str, Any] | None) -> dict[str, Any]:
+    """The monitor starts where the pre-screen left off, not at zero."""
+    risk = int((prescreen or {}).get("risk") or 0)
+    reasons = ["Waiting for the first message."]
+    if prescreen:
+        reasons = [f"Pre-screen: {prescreen['headline']} ({risk}/100)."] + list(prescreen["reasons"][:2])
+    return {
+        "score": round(risk * 0.4),
+        "verdict": "uncertain",
+        "confidence": 0,
+        "reasons": reasons,
+        "signals": [],
+        "scam_category": None,
+        "heuristic_score": 0,
+    }
+
+
+def _has_payment_rail(intel: dict[str, Any]) -> bool:
+    """A case is only worth handing over once there is something freezable in it."""
+    payment = intel.get("payment") or {}
+    return bool(payment.get("bank_accounts") or payment.get("crypto_wallets"))
 
 
 def _blend_score(llm_score: int, heur: int, signals: list[str]) -> int:
@@ -117,6 +161,11 @@ def _public(session: dict[str, Any], reply: str | None = None) -> dict[str, Any]
     return {
         "session_id": session["id"],
         "reply": reply,
+        "match": session.get("match"),
+        "prescreen": session.get("prescreen"),
+        "phase": session.get("phase", "user"),
+        "takeover_reason": session.get("takeover_reason"),
+        "case_ready": _has_payment_rail(session["intel"]),
         "persona": public_persona(pid) if pid else None,
         "persona_locked": session["persona_locked"],
         "persona_forced": session["persona_forced"],
@@ -278,6 +327,19 @@ async def index():
     )
 
 
+@app.get("/api/profiles")
+async def list_profiles():
+    return {"profiles": profiles_mod.deck()}
+
+
+@app.get("/api/profiles/{profile_id}")
+async def get_profile(profile_id: str):
+    profile = profiles_mod.PROFILE_BY_ID.get(profile_id)
+    if not profile:
+        raise HTTPException(404, "Unknown profile")
+    return profiles_mod.public_profile(profile)
+
+
 @app.get("/tinder")
 async def tinder_chat():
     return FileResponse(
@@ -334,7 +396,12 @@ async def configure_providers(body: ConfigureIn, request: Request):
 
 @app.post("/api/session")
 async def create_session(body: SessionIn | None = None):
-    return _public(_new_session(body.persona_id if body else None))
+    return _public(
+        _new_session(
+            body.persona_id if body else None,
+            body.profile_id if body else None,
+        )
+    )
 
 
 @app.get("/api/session/{session_id}")
@@ -404,10 +471,18 @@ async def chat(body: ChatIn):
     signals = extract_signals(all_user)
     heur = heuristic_score(signals)
 
+    # Decide before the model call so the reply this turn is already the decoy's.
+    was_taken_over = is_taken_over(session)
+    money_now = money_signals(extract_signals(text))
+    if not was_taken_over and money_now:
+        _take_over(session, f"Money ask detected — {_money_reason(money_now)}.", user_turns)
+
     try:
         result = await complete(session, text)
     except BrainOffline as exc:
         session["messages"].pop()
+        if not was_taken_over:
+            _undo_take_over(session)
         raise HTTPException(
             status_code=503,
             detail=(
@@ -417,6 +492,8 @@ async def chat(body: ChatIn):
         ) from exc
     except Exception as exc:  # noqa: BLE001
         session["messages"].pop()
+        if not was_taken_over:
+            _undo_take_over(session)
         raise HTTPException(status_code=502, detail=f"Model error: {exc}") from exc
 
     if not session["persona_forced"]:
@@ -459,20 +536,23 @@ async def chat(body: ChatIn):
     turn_intel = intel_mod.merge_intel(intel_mod.regex_intel(all_user), result.get("intel"))
     session["intel"] = intel_mod.merge_intel(session["intel"], turn_intel)
 
-    rails = bool(
-        session["intel"]["payment"]["bank_accounts"]
-        or session["intel"]["payment"]["crypto_wallets"]
-    )
+    rails = _has_payment_rail(session["intel"])
     if rails:
-        score = max(score, 88)
+        score = max(score, 92)
         verdict = "scammer"
         session["status"] = "engaged"
         session["detection"]["score"] = score
         session["detection"]["verdict"] = verdict
 
+    # The model can also call it before any money is named — a fake identity unravelling,
+    # isolation pressure, an off-app push. Hand the keyboard over then too.
+    if not is_taken_over(session) and verdict == "scammer" and score >= 65:
+        _take_over(session, "Live monitor scored this conversation as a scam.", user_turns)
+
     reply = result["reply"]
     exit_now = (
         result["should_exit_benign"]
+        and not is_taken_over(session)
         and user_turns >= MIN_TURNS_BEFORE_BENIGN_EXIT
         and score <= BENIGN_SCORE_CEILING
         and verdict == "benign"
@@ -488,18 +568,56 @@ async def chat(body: ChatIn):
 
     payload = _public(session, reply)
     payload["recorded_now"] = _maybe_record(session)
+    payload["takeover_now"] = is_taken_over(session) and not was_taken_over
     payload["case_id"] = session["case_id"]
     payload["recorded_by"] = session["recorded_by"]
     return payload
 
 
+_MONEY_REASONS = {
+    "money_ask": "they asked you to send or lend money",
+    "payment_request": "they asked you for a transfer",
+    "advance_fee": "they want a fee paid before anything happens",
+    "gift_card": "they asked for gift cards",
+    "money_mule": "they want money moved through your account",
+    "investment_pitch": "they are steering you onto an investment platform",
+    "job_fee": "they want a fee for a job",
+    "guaranteed_returns": "they promised guaranteed returns",
+    "crypto_solicitation": "they steered the chat to crypto",
+    "crypto_wallet": "they posted a wallet address",
+}
+
+
+def _money_reason(signals: list[str]) -> str:
+    for name in signals:
+        if name in _MONEY_REASONS:
+            return _MONEY_REASONS[name]
+    return "they went for your money"
+
+
+def _take_over(session: dict[str, Any], reason: str, turn: int) -> None:
+    session["phase"] = "takeover"
+    session["takeover_reason"] = reason
+    session["takeover_turn"] = turn
+    session["status"] = "engaged"
+
+
+def _undo_take_over(session: dict[str, Any]) -> None:
+    session["phase"] = "user"
+    session["takeover_reason"] = None
+    session["takeover_turn"] = None
+
+
 def _maybe_record(session: dict[str, Any]) -> bool:
-    """Auto-file the case once the agent is confident. Returns True on first file."""
+    """File the case once there is a payment rail to freeze. Returns True on first file."""
     detection = session["detection"]
+    # A verdict alone is not a case. Police and banks need the account, so the decoy
+    # keeps baiting until one is on the record.
     confident = (
         detection["verdict"] == "scammer"
         and detection["score"] >= AUTO_RECORD_SCORE
         and detection["confidence"] >= AUTO_RECORD_CONFIDENCE
+        and _has_payment_rail(session["intel"])
     )
     if not confident:
         return False

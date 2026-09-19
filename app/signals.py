@@ -51,7 +51,60 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         r"holding company|repayment (confirmation|document)|diamond (business|heir))",
         re.I,
     )),
+    # A scammer rarely says "transfer" first. They say lend, cover, top up, help me out.
+    ("money_ask", re.compile(
+        r"((lend|loan|borrow|spot|front)\s+(me|us)"
+        r"|(send|pay|cover|settle|clear|sort|handle)\s+(me|it|this|the\s+\w+)?\s*(for me|on my behalf|first)?\s*(\$|hk\$|usd|hkd|rmb|\d)"
+        r"|help me (with|out with|pay|cover|buy|top up)"
+        r"|need (you to send|the money|cash|funds|\$|hk\$)"
+        r"|top[\s-]?up|recharge|reload my"
+        r"|借\s*(我|錢|钱)|幫我(付|畀|俾|轉|轉數|充值|課金)|帮我(付|转|充值)|先(墊|垫|付|轉|转)|轉錢|转钱|匯錢|汇钱)",
+        re.I,
+    )),
+    ("advance_fee", re.compile(
+        r"(customs (fee|clearance|duty)|clearance fee|release fee|unlock(ing)? fee|processing fee"
+        r"|handling fee|courier fee|shipping fee|insurance fee|tax (fee|payment) (first|before)"
+        r"|verification fee|withdrawal fee|unfreeze|解凍金|解冻金|手續費|手续费|稅金|税金|保證金|保证金|報關|报关)",
+        re.I,
+    )),
+    ("gift_card", re.compile(
+        r"(gift\s*card|itunes|steam (card|wallet)|google play (card|code)|amazon card|點數卡|点数卡|禮品卡|礼品卡)",
+        re.I,
+    )),
+    ("money_mule", re.compile(
+        r"(receive (a|the|this) (transfer|payment|money) for me|use your account|through your account"
+        r"|my account is (frozen|blocked|restricted)|can't use my (card|bank|account)"
+        r"|cannot use my (card|bank|account)|收款|幫我收錢|帮我收钱|借你(個|个)?戶口|借你(個|个)?账户)",
+        re.I,
+    )),
+    ("investment_pitch", re.compile(
+        r"(trading (platform|account|signal)|invest(ment)? (platform|group|plan|opportunity)"
+        r"|my (mentor|uncle|analyst) (taught|gave) me|copy my trade|mining pool|arbitrage"
+        r"|理財|理财|投資平台|投资平台|穩賺|稳赚|帶你做單|带你做单)",
+        re.I,
+    )),
 ]
+
+# Any of these means "they are steering the conversation at your money". That is the
+# trigger for takeover — the decoy should be the one replying by then, not the user.
+MONEY_SIGNALS = frozenset(
+    {
+        "payment_request",
+        "money_ask",
+        "advance_fee",
+        "gift_card",
+        "money_mule",
+        "investment_pitch",
+        "job_fee",
+        "guaranteed_returns",
+        "crypto_solicitation",
+        "crypto_wallet",
+    }
+)
+
+
+def money_signals(signals: list[str]) -> list[str]:
+    return [s for s in signals if s in MONEY_SIGNALS]
 
 
 def extract_signals(text: str) -> list[str]:
@@ -77,6 +130,11 @@ def heuristic_score(signals: list[str]) -> int:
         "crypto_solicitation": 26,
         "off_platform": 10,
         "romance_lure": 22,
+        "money_ask": 30,
+        "advance_fee": 32,
+        "gift_card": 30,
+        "money_mule": 32,
+        "investment_pitch": 26,
     }
     raw = sum(weights.get(s, 10) for s in signals)
     return min(95, raw)
