@@ -9,7 +9,7 @@ import uuid
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,6 +65,10 @@ class SeedMessage(BaseModel):
 
 class SeedIn(BaseModel):
     messages: list[SeedMessage] = Field(min_length=1, max_length=20)
+
+
+class ConfigureIn(BaseModel):
+    poe_api_key: str | None = None
 
 
 def _new_session(persona_id: str | None = None) -> dict[str, Any]:
@@ -317,6 +321,20 @@ async def reload_providers():
     return _health_payload()
 
 
+@app.post("/api/providers/configure")
+async def configure_providers(body: ConfigureIn, request: Request):
+    """Save a Poe key to .env from this machine only, then rebuild the chain."""
+    host = (request.client.host if request.client else "") or ""
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(403, "Local only")
+    key = (body.poe_api_key or "").strip()
+    if not key:
+        raise HTTPException(400, "poe_api_key required")
+    llm.persist_env_key("POE_API_KEY", key)
+    llm.reload_providers()
+    return _health_payload()
+
+
 @app.post("/api/session")
 async def create_session(body: SessionIn | None = None):
     return _public(_new_session(body.persona_id if body else None))
@@ -352,7 +370,12 @@ async def seed_session(session_id: str, body: SeedIn):
             raise HTTPException(400, "role must be user or assistant")
         session["messages"].append({"role": role, "content": item.content.strip()})
     _apply_demo_detection(session)
-    return _public(session)
+    recorded = _maybe_record(session)
+    payload = _public(session)
+    payload["recorded_now"] = recorded
+    payload["case_id"] = session["case_id"]
+    payload["recorded_by"] = session["recorded_by"]
+    return payload
 
 
 @app.post("/api/session/{session_id}/flag")
@@ -445,6 +468,17 @@ async def chat(body: ChatIn):
 
     turn_intel = intel_mod.merge_intel(intel_mod.regex_intel(all_user), result.get("intel"))
     session["intel"] = intel_mod.merge_intel(session["intel"], turn_intel)
+
+    rails = bool(
+        session["intel"]["payment"]["bank_accounts"]
+        or session["intel"]["payment"]["crypto_wallets"]
+    )
+    if rails:
+        score = max(score, 88)
+        verdict = "scammer"
+        session["status"] = "engaged"
+        session["detection"]["score"] = score
+        session["detection"]["verdict"] = verdict
 
     reply = result["reply"]
     exit_now = (

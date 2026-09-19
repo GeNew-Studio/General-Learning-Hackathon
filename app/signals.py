@@ -5,7 +5,7 @@ import re
 # Lightweight cues shown in the analyst panel. The model still owns the verdict.
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("payment_request", re.compile(
-        r"(wire|transfer|deposit|alipay|wechat\s*pay|保证金|转账|汇款|打款|付款|支付宝|微信支付|gift\s*card)",
+        r"(wire|transfer|deposit|alipay|wechat\s*pay|payme|fps|hsbc|保证金|转账|匯款|汇款|打款|付款|支付宝|微信支付|gift\s*card)",
         re.I,
     )),
     ("crypto_wallet", re.compile(

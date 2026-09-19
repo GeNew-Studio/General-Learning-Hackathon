@@ -75,13 +75,55 @@ def _env(*names: str, default: str = "") -> str:
     return default
 
 
+def _real_key(value: str | None) -> str:
+    """Ignore empty values and the .env.example placeholders."""
+    key = (value or "").strip()
+    if not key:
+        return ""
+    lowered = key.lower()
+    if "your-key" in lowered or lowered.endswith("-here") or lowered.startswith("sk-your"):
+        return ""
+    return key
+
+
+def persist_env_key(name: str, value: str) -> None:
+    """Write one key into .env (create the file if needed) without printing the secret."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(root, ".env")
+    cleaned = value.strip()
+    line = f"{name}={cleaned}"
+    existing = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+    pattern = re.compile(rf"^{re.escape(name)}=.*$", re.M)
+    text = pattern.sub(line, existing, count=1) if pattern.search(existing) else (
+        existing.rstrip() + ("\n" if existing.strip() else "") + line
+    )
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text.rstrip() + "\n")
+    os.environ[name] = cleaned
+
+
 def _build_providers() -> list[Provider]:
     thinking = os.getenv("DEEPSEEK_THINKING", "disabled").strip().lower()
     candidates = [
+        # OpenAI-compatible: https://api.poe.com/v1  (keys at https://poe.com/api/keys)
+        # Chat Completions ignores response_format, so JSON is parsed from the text.
+        Provider(
+            name="poe",
+            base_url=_env("POE_BASE_URL", default="https://api.poe.com/v1"),
+            api_key=_real_key(_env("POE_API_KEY")),
+            models=_model_list(
+                _env("POE_MODEL"),
+                "Claude-Haiku-4.5",
+                "claude-haiku-4.5",
+                "GPT-4o-Mini",
+                "gpt-4o-mini",
+            ),
+            supports_json_mode=False,
+        ),
         Provider(
             name="deepseek",
             base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-            api_key=(os.getenv("DEEPSEEK_API_KEY") or "").strip(),
+            api_key=_real_key(os.getenv("DEEPSEEK_API_KEY")),
             models=_model_list(
                 os.getenv("DEEPSEEK_MODEL"), "deepseek-v4-flash", "deepseek-v4-pro"
             ),
@@ -93,7 +135,7 @@ def _build_providers() -> list[Provider]:
         Provider(
             name="ling",
             base_url=_env("LING_BASE_URL", default="https://zenmux.ai/api/v1"),
-            api_key=_env("LING_API_KEY"),
+            api_key=_real_key(_env("LING_API_KEY")),
             # Free Ling capacity is flaky, so fall through to other free models
             # that are still strong in Chinese and English.
             models=_model_list(
@@ -108,7 +150,7 @@ def _build_providers() -> list[Provider]:
         Provider(
             name="openrouter",
             base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
-            api_key=(os.getenv("OPENROUTER_API_KEY") or "").strip(),
+            api_key=_real_key(os.getenv("OPENROUTER_API_KEY")),
             models=_model_list(
                 os.getenv("OPENROUTER_MODEL"),
                 "deepseek/deepseek-v4-flash",
@@ -119,7 +161,7 @@ def _build_providers() -> list[Provider]:
         Provider(
             name=(os.getenv("LLM_NAME") or "custom").strip(),
             base_url=(os.getenv("LLM_BASE_URL") or "").strip(),
-            api_key=(os.getenv("LLM_API_KEY") or "").strip(),
+            api_key=_real_key(os.getenv("LLM_API_KEY")),
             models=_model_list(os.getenv("LLM_MODEL")),
         ),
     ]
@@ -220,13 +262,28 @@ async def _run_provider(
                     raise _ProviderDown from exc
 
                 if response.status_code < 400:
+                    content = ""
                     try:
                         data = response.json()
                         content = data["choices"][0]["message"]["content"]
                         parsed = parse_json(content)
                     except Exception as exc:  # noqa: BLE001
                         errors.append(f"{provider.name}/{model}: unparseable reply ({exc})")
-                        break
+                        # Poe ignores json_object mode; one repair turn usually gets a bare object.
+                        already_repaired = "valid json" in messages[-1].get("content", "").lower()
+                        if already_repaired or not content:
+                            break
+                        messages = messages + [
+                            {"role": "assistant", "content": str(content)[:4000]},
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Your previous reply was not valid json. "
+                                    "Return ONLY the json object from the schema. No markdown."
+                                ),
+                            },
+                        ]
+                        continue
                     provider.last_error = ""
                     return parsed, f"{provider.name}:{data.get('model') or model}"
 
@@ -273,7 +330,7 @@ async def chat_json(
 ) -> tuple[dict[str, Any], str]:
     """Return (parsed JSON object, "provider:model"). Raises NoProviderError."""
     if not PROVIDERS:
-        raise NoProviderError("No LLM provider configured. Set DEEPSEEK_API_KEY in .env")
+        raise NoProviderError("No LLM provider configured. Set POE_API_KEY in .env")
 
     messages = [
         {"role": "system", "content": system_prompt},

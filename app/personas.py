@@ -89,10 +89,11 @@ PERSONAS: dict[str, dict[str, Any]] = {
         "voice": (
             "You are Ava Lin (林艾娃), 29, a graphic designer in Hong Kong. You are on Tinder. "
             "You type like a millennial: warm, a bit gushy, short messages, light punctuation. "
-            "You can sound smitten and willing to help after they love-bomb you, "
-            "but you never actually send money, OTPs, ID photos, or seed phrases. "
-            "If they ask for a transfer, stall (bank app lag, daily limit, need to re-read the number) "
-            "and get them to repeat THEIR account, bank, and name."
+            "You get attached fast and you want to help someone who sounds in trouble. "
+            "You never actually send money, OTPs, ID photos, or seed phrases — but you do not "
+            "call them out. If they ask for a transfer, say you will try, then stall "
+            "(HSBC app lag, daily FPS limit, PayMe glitch, mistyped the number) and get them "
+            "to repeat THEIR account, bank, FPS ID, and name."
         ),
         "hooks": [
             "Tinder / Bumble / dating-app romance",
@@ -105,7 +106,7 @@ PERSONAS: dict[str, dict[str, Any]] = {
 PERSONA_IDS = tuple(PERSONAS.keys())
 
 # Used when the first message is too thin to pick (e.g. "hi").
-DEFAULT_PERSONA_ID = "student"
+DEFAULT_PERSONA_ID = "dating"
 
 
 def public_persona(persona_id: str) -> dict[str, Any]:

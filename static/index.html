@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FakerAI</title>
-    <link rel="stylesheet" href="/static/styles.css?v=11" />
+    <link rel="stylesheet" href="/static/styles.css?v=13" />
   </head>
   <body>
     <div class="app">
@@ -25,10 +25,10 @@
         <div class="top-actions">
           <button type="button" id="new-session" class="primary">New session</button>
           <div class="mode-switch" role="tablist" aria-label="Mode">
-            <button type="button" class="mode-btn active" data-mode="demo" role="tab" aria-selected="true">
+            <button type="button" class="mode-btn" data-mode="demo" role="tab" aria-selected="false">
               1
             </button>
-            <button type="button" class="mode-btn" data-mode="real" role="tab" aria-selected="false">
+            <button type="button" class="mode-btn active" data-mode="real" role="tab" aria-selected="true">
               2
             </button>
           </div>
@@ -53,6 +53,14 @@
               <strong>No model connected.</strong>
               <span id="offline-detail">The decoy cannot reply until a provider answers.</span>
             </div>
+            <input
+              type="password"
+              id="poe-key"
+              placeholder="POE_API_KEY"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="button" id="save-poe-key">Save</button>
             <button type="button" id="recheck-brain">Recheck</button>
           </div>
           <ol class="thread" id="thread"></ol>
@@ -179,6 +187,6 @@
       </section>
     </div>
     <script src="/static/demo-scripts.js?v=1"></script>
-    <script src="/static/app.js?v=18"></script>
+    <script src="/static/app.js?v=20"></script>
   </body>
 </html>

@@ -20,6 +20,7 @@ load_dotenv()
 
 # (label, base_url, model)
 CANDIDATES: list[tuple[str, str, str]] = [
+    ("Poe", "https://api.poe.com/v1", "Claude-Haiku-4.5"),
     ("ZenMux", "https://zenmux.ai/api/v1", "inclusionai/ling-3.0-flash"),
     ("Novita", "https://api.novita.ai/openai/v1", "inclusionai/ling-3.0-flash"),
     ("OpenRouter", "https://openrouter.ai/api/v1", "inclusionai/ling-3.0-flash"),
@@ -27,6 +28,7 @@ CANDIDATES: list[tuple[str, str, str]] = [
 ]
 
 KEY_NAMES = [
+    "POE_API_KEY",
     "LING_API_KEY",
     "OPENROUTER_API_KEY",
     "NOVITA_API_KEY",

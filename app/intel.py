@@ -234,16 +234,22 @@ _RE_WECHAT = re.compile(r"(?:wechat|weixin|微信(?:号)?)\s*(?:id|:|：|是|＝
 _RE_PHONE = re.compile(r"(?<![\w.])(?:\+\d{1,3}[\s-]?)?(?:1[3-9]\d{9}|\d{3}[\s-]\d{3,4}[\s-]\d{4}|\+\d{8,15})(?![\w.])")
 _RE_IBAN = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b")
 _RE_BANK_NUM = re.compile(
-    r"(?:account(?:\s*(?:no|number|#))?|acct|卡号|账号|账户|银行卡)\s*(?:is|:|：|=)?\s*(\d[\d\s-]{7,24}\d)",
+    r"(?:account(?:\s*(?:no|number|#))?|acct|卡号|账号|账户|银行卡|戶口|户口)\s*(?:is|:|：|=)?\s*(\d[\d\s-]{7,24}\d)",
     re.I,
 )
+_RE_HSBC = re.compile(r"\b(?:HSBC|Hang\s*Seng|BOC|DBS|SCB)\s+(\d{3}[- ]\d{6,9}[- ]\d{2,4})\b", re.I)
+_RE_FPS = re.compile(r"\bFPS(?:\s*(?:id|ID|:|：))?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+|\d{8,12})\b")
 _RE_AMOUNT = re.compile(
     r"(?:(?:USD|RMB|CNY|HKD|EUR|GBP|USDT|BTC|ETH|\$|¥|￥|€|£)\s*[\d,]+(?:\.\d+)?"
-    r"|[\d,]+(?:\.\d+)?\s*(?:USDT|USD|RMB|CNY|HKD|EUR|GBP|BTC|ETH|元|块|万))",
+    r"|[\d,]+(?:\.\d+)?\s*(?:USDT|USD|RMB|CNY|HKD|EUR|GBP|BTC|ETH|元|块|万|萬))",
     re.I,
 )
 
 _PAYMENT_APPS = {
+    "payme": "PayMe",
+    "fps": "FPS",
+    "hsbc": "HSBC",
+    "hang seng": "Hang Seng",
     "alipay": "Alipay",
     "支付宝": "Alipay",
     "wechat pay": "WeChat Pay",
@@ -314,6 +320,8 @@ def regex_intel(text: str) -> dict[str, Any]:
     accounts = _RE_IBAN.findall(blob) + [
         re.sub(r"[\s-]", "", a) for a in _RE_BANK_NUM.findall(blob)
     ]
+    accounts += [re.sub(r"[\s-]", "", a) for a in _RE_HSBC.findall(blob)]
+    accounts += _RE_FPS.findall(blob)
     intel["payment"]["bank_accounts"] = _clean_list(accounts)
 
     apps = [label for needle, label in _PAYMENT_APPS.items() if needle in lowered]

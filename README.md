@@ -44,11 +44,12 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8787
 
 | Order | Provider | Env |
 |---|---|---|
-| 1 | DeepSeek | `DEEPSEEK_API_KEY` |
-| 2 | Ling / InclusionAI | `LING_API_KEY` (+ `LING_BASE_URL`, `LING_MODEL`) |
-| 3 | OpenRouter | `OPENROUTER_API_KEY` |
-| 4 | Any OpenAI-compatible endpoint | `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` |
-| 5 | Offline heuristics, only if `DECOY_ALLOW_FALLBACK=1` | — |
+| 1 | Poe | `POE_API_KEY` (https://poe.com/api/keys) |
+| 2 | DeepSeek | `DEEPSEEK_API_KEY` |
+| 3 | Ling / InclusionAI | `LING_API_KEY` (+ `LING_BASE_URL`, `LING_MODEL`) |
+| 4 | OpenRouter | `OPENROUTER_API_KEY` |
+| 5 | Any OpenAI-compatible endpoint | `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` |
+| 6 | Offline heuristics, only if `DECOY_ALLOW_FALLBACK=1` | — |
 
 Not sure which host issued a key? `python scripts/check_key.py` sends one tiny request
 to each candidate and reports which one accepts it.
@@ -128,6 +129,7 @@ SQLite at `data/decoy.db` (override with `DECOY_DB_PATH`), three tables: `cases`
 | GET | `/api/stats` | totals, categories, shared infrastructure |
 | GET | `/api/health` | provider chain state |
 | POST | `/api/providers/reload` | re-read `.env` and rebuild the provider chain |
+| POST | `/api/providers/configure` | save `POE_API_KEY` locally and rebuild the chain |
 
 ## Checking it without a browser
 

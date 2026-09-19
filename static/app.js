@@ -86,7 +86,8 @@ const DOSSIER = [
   },
 ];
 
-const DEFAULT_DEMO_PERSONA = "elder";
+const DEFAULT_DEMO_PERSONA = "dating";
+const DEFAULT_LIVE_PERSONA = "dating";
 const HANDOVER_SCORE = 88;
 const HANDOVER_STEPS = [
   { at: 400, step: "extract", kicker: "Extracting fraud data" },
@@ -101,7 +102,7 @@ let busy = false;
 let filledKeys = new Set();
 let dossierPrimed = false;
 let openCaseId = null;
-let chatMode = "demo";
+let chatMode = "real";
 let demoPersonaId = DEFAULT_DEMO_PERSONA;
 let scriptStep = 0;
 let seededCount = 0;
@@ -298,7 +299,7 @@ async function checkBrain({ reload = false } = {}) {
     }
     const why = health.configured
       ? health.providers.map((p) => `${p.name}: ${p.last_error || "unreachable"}`).join(" · ")
-      : "No provider configured. Add OPENROUTER_API_KEY to .env.";
+      : "No provider configured. Add POE_API_KEY to .env.";
     showOffline(why);
     return false;
   } catch (err) {
@@ -397,10 +398,18 @@ function startHandover(data) {
   });
 }
 
+function hasPaymentRails(data) {
+  const pay = data?.intel?.payment || {};
+  return Boolean(
+    (Array.isArray(pay.bank_accounts) && pay.bank_accounts.length) ||
+      (Array.isArray(pay.crypto_wallets) && pay.crypto_wallets.length),
+  );
+}
+
 function maybeHandover(data) {
   if (handoverPlayed) return;
-  const score = data?.detection?.score ?? 0;
-  if (score < HANDOVER_SCORE) return;
+  const manual = Boolean(data?.recorded_now && data?.recorded_by === "manual");
+  if (!hasPaymentRails(data) && !manual) return;
   startHandover(data);
 }
 
@@ -428,7 +437,7 @@ function renderDossier(intel, target, { animate = true } = {}) {
       })
       .join("");
     const filled = filledFields.length;
-    const emptyClass = filled ? "" : " empty-group";
+    const emptyClass = filled ? " has-fill" : " empty-group";
     return `
       <section class="d-group${emptyClass}">
         <h3>${group.title}<span class="d-fill">${filled}/${group.fields.length}</span></h3>
@@ -526,7 +535,9 @@ function paintIntel(data) {
 
 async function createSession() {
   const personaId =
-    chatMode === "demo" ? demoPersonaId || DEFAULT_DEMO_PERSONA : personaSelect.value || null;
+    chatMode === "demo"
+      ? demoPersonaId || DEFAULT_DEMO_PERSONA
+      : personaSelect.value || DEFAULT_LIVE_PERSONA;
   const data = await api("/api/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -636,14 +647,9 @@ form.addEventListener("submit", async (e) => {
   const text = input.value.trim();
   if (!text) return;
   if (busy || handoverPlayed) return;
-  if (scriptActive()) {
-    if (demoLineMatches(text, currentDemoScript().turns[scriptStep].scammer)) {
-      input.value = "";
-      await playDemoTurn(text);
-      return;
-    }
+  if (scriptActive() && demoLineMatches(text, currentDemoScript().turns[scriptStep].scammer)) {
     input.value = "";
-    addBubble("user", text);
+    await playDemoTurn(text);
     return;
   }
   input.value = "";
@@ -708,9 +714,8 @@ document.querySelectorAll(".mode-btn").forEach((btn) => {
     const next = btn.dataset.mode;
     if (next === chatMode) return;
     chatMode = next;
-    applyMode();
-    if (scriptActive()) paintDemoPersona();
-    else checkBrain();
+    newSession().catch((err) => addBubble("system", String(err.message || err)));
+    if (chatMode === "real") checkBrain();
   });
 });
 
@@ -747,7 +752,7 @@ flagBtn.addEventListener("click", async () => {
   if (!sessionId) return;
   try {
     const data = await api(`/api/session/${sessionId}/flag`, { method: "POST" });
-    paintIntel(data.session);
+    paintIntel({ ...data.session, recorded_now: true });
     addBubble("system", `Case filed manually: ${data.case.id}`);
     refreshCount();
   } catch (err) {
@@ -930,9 +935,7 @@ async function boot() {
       option.textContent = `${p.name} · ${p.role}`;
       personaSelect.appendChild(option);
     });
-    if (chatMode === "demo" && DEMO_SCRIPTS[demoPersonaId]) {
-      personaSelect.value = demoPersonaId;
-    }
+    personaSelect.value = chatMode === "demo" ? demoPersonaId : DEFAULT_LIVE_PERSONA;
   } catch {
     /* the picker just stays on auto */
   }
@@ -946,6 +949,31 @@ $("recheck-brain").addEventListener("click", async () => {
   offlineDetail.textContent = "Rechecking…";
   const ok = await checkBrain({ reload: true });
   if (ok) addBubble("system", "Model connected — go ahead.");
+});
+
+$("save-poe-key").addEventListener("click", async () => {
+  const key = $("poe-key").value.trim();
+  if (!key) return;
+  offlineDetail.textContent = "Saving key…";
+  try {
+    const health = await api("/api/providers/configure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ poe_api_key: key }),
+    });
+    $("poe-key").value = "";
+    if (health.any_ready) {
+      hideOffline();
+      addBubble("system", "Poe connected — go ahead.");
+      return;
+    }
+    const why = (health.providers || [])
+      .map((p) => `${p.name}: ${p.last_error || "unreachable"}`)
+      .join(" · ");
+    showOffline(why || "Key saved but no provider answered.");
+  } catch (err) {
+    showOffline(String(err.message || err));
+  }
 });
 
 boot().catch((err) => addBubble("system", String(err.message || err)));

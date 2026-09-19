@@ -12,18 +12,22 @@ never mentioned by the decoy.
 
 - Python FastAPI (`app/main.py`) + vanilla `static/` frontend, two tabs: Live chat and Case files. Palette: `#00C8CB` / `#00A3B0` accents on `#0B1020` navy, `#334155` lines, `#E2E8F0` text.
 - Local host: `npm run dev` (`scripts/dev.js`) creates `.venv` if needed, installs `requirements.txt`, and starts uvicorn with reload on port 8787.
-- Header switch (top right): **1** (scripted, default) vs **2** (live model). Do not show the word “demo” in the UI except as internal mode ids. Mode 1 fuzzy-matches a canned script for the selected decoy (`elder` family-emergency, `job_seeker` task-job, `crypto` airdrop, `student` 公检法, `dating` Tinder romance / emergency-loan) and returns fixed victim lines; further turns, or mode 2, use the live model. Analyst score climbs each scripted turn and jumps to the high 80s when a bank account or wallet is given. `/api/chat` is unchanged — scripted history is appended via `POST /api/session/{id}/seed`. Default decoy is Chen Shufen.
+- Header switch (top right): **1** (scripted) vs **2** (live model, default). Do not show the word “demo” in the UI except as internal mode ids. Mode 1 fuzzy-matches a canned script for the selected decoy (`elder` family-emergency, `job_seeker` task-job, `crypto` airdrop, `student` 公检法, `dating` Tinder romance / emergency-loan) and returns fixed victim lines; unmatched lines, further turns, or mode 2, use the live model. Analyst score and the fraud-report ticks come from `/api/chat` (or seeded demo detection). Score climbs with the lure and jumps when a bank account or wallet is given; that auto-files the case and plays the police/bank handover. `/api/chat` is unchanged — scripted history is appended via `POST /api/session/{id}/seed`. Default decoy is Ava Lin.
+- Tinder skin (`/tinder`) talks to the live model as Ava. Canned dating turns only run if you open `/tinder?script=1`.
 - SQLite at `data/decoy.db` (`app/db.py`), gitignored — tables `cases`, `case_iocs`, `case_messages`
 - Serve on port 8787 — port 8000 is blocked on this machine
 
 ## Model access
 
-- `app/llm.py` owns the provider chain: DeepSeek → Ling (`LING_API_KEY`) → OpenRouter →
+- `app/llm.py` owns the provider chain: Poe (`POE_API_KEY`) → DeepSeek → Ling (`LING_API_KEY`) → OpenRouter →
  any OpenAI-compatible (`LLM_BASE_URL`) → offline heuristics. Failed providers cool down
  for two minutes.
+- Poe is OpenAI-compatible (`https://api.poe.com/v1`). Keys from https://poe.com/api/keys.
+  Default bot `Claude-Haiku-4.5` (fast, cheap). Override with `POE_MODEL`. Chat Completions
+  ignores `response_format`; the parser still extracts a JSON object from the reply.
 - Ling is open-weight with no single official API — set `LING_BASE_URL` to match the host
- that issued the key (ZenMux default, or Novita/OpenRouter). All three are reachable here.
- `scripts/check_key.py` probes a key against every candidate host to identify its owner.
+  that issued the key (ZenMux default, or Novita/OpenRouter). All three are reachable here.
+  `scripts/check_key.py` probes a key against every candidate host to identify its owner.
 - The current key is an OpenRouter free-tier key, so `LING_BASE_URL` points at OpenRouter.
  Free capacity returns 429 under load — `llm.py` retries twice with backoff, then falls
  through to the next model (`ling-3.0-flash-fin:free`, `glm-5.2:free`, `minimax-m3:free`).

@@ -248,7 +248,12 @@ function startHandover(data) {
 function maybeHandover(data) {
   if (handoverPlayed) return;
   const score = data?.detection?.score ?? 0;
-  if (score < HANDOVER_SCORE) return;
+  const pay = data?.intel?.payment || {};
+  const rails = Boolean(
+    (pay.bank_accounts && pay.bank_accounts.length) ||
+      (pay.crypto_wallets && pay.crypto_wallets.length),
+  );
+  if (score < HANDOVER_SCORE && !rails) return;
   startHandover(data);
 }
 
@@ -423,12 +428,9 @@ async function sendLive(text) {
 
 async function sendText(text) {
   if (handoverPlayed) return;
-  if (scriptActive()) {
-    if (matchesCurrentTurn(text)) {
-      await playDemoTurn(text);
-      return;
-    }
-    addBubble("user", text);
+  const scriptOn = new URLSearchParams(location.search).get("script") === "1";
+  if (scriptOn && scriptActive() && matchesCurrentTurn(text)) {
+    await playDemoTurn(text);
     return;
   }
   await sendLive(text);
