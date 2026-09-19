@@ -24,7 +24,7 @@ of it. Both run at the same time on port 8787.
 |---|---|---|
 | What it is | The back office. What a fraud desk, a police cyber unit, or our own team sees. | The product. What the person on the dating app sees on their phone. |
 | Who is typing | You play the other party (the scammer). The decoy answers. | You play the match (the scammer). The user's account answers. |
-| What it shows | Live risk score, verdict, why, the fraud report filling in field by field, every stored case. | A deck of screened matches, a chat, a live monitor bar, the takeover banner, the handover animation. |
+| What it shows | The same three stages as numbered readouts — pre-screen card, phase card, score and verdict, the fraud report filling in field by field — plus every stored case. | A deck of screened matches, a chat, a live monitor bar, the takeover banner, the handover animation. |
 | Why it exists | Proves the detection and evidence are real, not scripted. | Proves the experience: the user never has to judge anyone. |
 | How to open | `http://127.0.0.1:8787/` | `http://127.0.0.1:8787/tinder`, or the **Open the dating app ↗** button in the console header |
 | Built from | `static/index.html` + `static/app.js` + `static/styles.css` | `static/tinder.html` + `static/tinder.js` + `static/tinder.css` |
@@ -37,15 +37,30 @@ Shared by both: `app/agent.py` (one model call per turn), `app/signals.py` (rule
 
 Two tabs.
 
-**Live chat.** You type as the other party; the decoy replies. The right-hand panel is the
-analyst view and the decoy never sees it:
+**Live chat.** Pick a match from the **Match** dropdown at the top — it is the same deck the
+dating app shows, so the console runs the identical pipeline. You then type as the other
+party and the decoy replies. The right-hand panel is the analyst view and the decoy never
+sees it. It reads top to bottom as the three stages:
 
+- **Stage 1 · Pre-screen** — the chosen profile's risk, verdict and the exact checks that
+  fired. Pick a blocked profile (e.g. Marcus Crowe) and the console refuses to open a
+  session at all: the card turns red, the card below says **BLOCKED BEFORE CONTACT**, and
+  the composer is disabled. Same 403 the dating app gets.
+- **Stage 2 · Owner is replying** — the phase card while the chat is still ordinary. Faker
+  is scoring but not intervening.
+- **Stage 3 · Faker has taken over** — the same card flips cyan the turn the takeover
+  fires, and prints the reason that triggered it.
 - **Score dial + verdict** (`scammer` / `uncertain` / `benign`), recomputed every turn.
+- **Case gate** under the flag button: *"Case stays open until a bank account or wallet
+  lands"* until one does, then the filed case ID.
 - **Why** — the model's evidence, in its own words, plus any regex rule hits.
 - **Fraud report** — five groups (identity, contact, payment rails, infrastructure,
   playbook) that tick over as the conversation gives things away. `0/5` becomes `3/5` only
   because the other side actually said something, never because a timer fired.
 - **Flag as swindler** to file a case by hand at any point.
+
+`/?match=p09` opens the console already bound to a profile, so it can sit next to
+`/tinder?open=p09` on the same match.
 
 **Case files.** Every filed case: verdict, analyst notes, full transcript, and all extracted
 values. Search across IDs, categories, summaries and any indicator; export to JSON or CSV.

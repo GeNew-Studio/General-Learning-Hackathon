@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FakerAI</title>
-    <link rel="stylesheet" href="/static/styles.css?v=16" />
+    <link rel="stylesheet" href="/static/styles.css?v=17" />
   </head>
   <body>
     <div class="app">
@@ -34,6 +34,12 @@
             <div class="persona-live" id="persona-live">
               <strong>Ava Lin</strong> · Dating-app user
             </div>
+            <label class="match-picker">
+              <span>Match</span>
+              <select id="match-select">
+                <option value="">No profile · raw chat</option>
+              </select>
+            </label>
           </div>
           <div class="offline-banner hidden" id="offline-banner">
             <div class="ob-text">
@@ -64,6 +70,21 @@
         </section>
 
         <aside class="intel-pane" aria-label="Live verdict">
+          <section class="prescreen hidden" id="prescreen">
+            <div class="ps-top">
+              <span class="ps-kicker">Stage 1 · pre-screen, before any contact</span>
+              <span class="ps-verdict" id="ps-verdict">clear</span>
+            </div>
+            <p class="ps-head" id="ps-head">—</p>
+            <span class="ps-bar"><i id="ps-fill"></i></span>
+            <ul class="ps-reasons" id="ps-reasons"></ul>
+          </section>
+
+          <section class="phase-card" id="phase-card" data-phase="user">
+            <span class="phase-chip" id="phase-chip">STAGE 2 · OWNER IS REPLYING</span>
+            <p id="phase-note">The user chats for themselves. Faker only scores every turn.</p>
+          </section>
+
           <div class="intel-top">
             <div class="gauge">
               <svg viewBox="0 0 120 120" class="ring" aria-hidden="true">
@@ -86,6 +107,9 @@
                 <div><dt>Evidence</dt><dd id="ioc-count">0</dd></div>
               </dl>
               <button type="button" id="flag-btn" class="flag-btn">Flag as swindler</button>
+              <p class="case-gate" id="case-gate">
+                Case stays open until a bank account or wallet lands.
+              </p>
             </div>
           </div>
 
@@ -175,6 +199,6 @@
     </div>
     <script src="/static/demo-scripts.js?v=2"></script>
     <script src="/static/handover.js?v=1"></script>
-    <script src="/static/app.js?v=24"></script>
+    <script src="/static/app.js?v=26"></script>
   </body>
 </html>

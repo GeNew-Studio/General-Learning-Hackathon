@@ -28,6 +28,10 @@ const statsEl = $("stats");
 const caseSearch = $("case-search");
 const offlineBanner = $("offline-banner");
 const offlineDetail = $("offline-detail");
+const matchSelect = $("match-select");
+const prescreenEl = $("prescreen");
+const phaseCard = $("phase-card");
+const caseGate = $("case-gate");
 
 const DOSSIER = [
   {
@@ -93,6 +97,9 @@ const handover = FakerHandover.create({
 
 let sessionId = null;
 let busy = false;
+let profiles = [];
+let profileId = "";
+let blockedBeforeContact = false;
 let filledKeys = new Set();
 let dossierPrimed = false;
 let openCaseId = null;
@@ -362,6 +369,9 @@ function paintIntel(data) {
   turnEl.textContent = data.turn ?? 0;
   iocCountEl.textContent = data.ioc_count ?? 0;
 
+  paintPhase(data);
+  paintCaseGate(data);
+
   const model = data.model || "—";
   providerEl.textContent =
     model === "local-fallback"
@@ -417,12 +427,109 @@ function paintIntel(data) {
   }
 }
 
-async function createSession() {
-  const data = await api("/api/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ persona_id: PERSONA_ID }),
+// ------------------------------------------------- pre-screen and phase
+
+function selectedProfile() {
+  return profiles.find((p) => p.id === profileId) || null;
+}
+
+function paintPrescreen(profile) {
+  if (!profile) {
+    prescreenEl.classList.add("hidden");
+    return;
+  }
+  const s = profile.screening;
+  prescreenEl.classList.remove("hidden");
+  prescreenEl.dataset.verdict = s.verdict;
+  $("ps-verdict").textContent = s.verdict;
+  $("ps-head").textContent = `${profile.name}, ${profile.age} — ${s.headline} (${s.risk}/100)`;
+  $("ps-fill").style.width = `${Math.max(3, s.risk)}%`;
+  $("ps-reasons").innerHTML = "";
+  (s.reasons.length ? s.reasons : ["Photos, bio and account history all check out."])
+    .slice(0, 4)
+    .forEach((reason) => {
+      const li = document.createElement("li");
+      li.textContent = reason;
+      $("ps-reasons").appendChild(li);
+    });
+}
+
+function paintPhase(data) {
+  if (blockedBeforeContact) {
+    phaseCard.dataset.phase = "blocked";
+    $("phase-chip").textContent = "BLOCKED BEFORE CONTACT";
+    $("phase-note").textContent =
+      "The pre-screen rejected this profile, so the chat never opened. Nothing was sent.";
+    return;
+  }
+  if (data?.phase === "takeover") {
+    phaseCard.dataset.phase = "takeover";
+    $("phase-chip").textContent = "STAGE 3 · FAKER HAS TAKEN OVER";
+    $("phase-note").textContent =
+      `${data.takeover_reason || "Scam pattern confirmed."} The owner is out of the chat; ` +
+      "the decoy is baiting for an account.";
+    return;
+  }
+  phaseCard.dataset.phase = "user";
+  $("phase-chip").textContent = "STAGE 2 · OWNER IS REPLYING";
+  $("phase-note").textContent = "The user chats for themselves. Faker only scores every turn.";
+}
+
+function paintCaseGate(data) {
+  if (data?.case_id) {
+    caseGate.textContent = `Case ${data.case_id} filed — a payment rail is on the record.`;
+    caseGate.classList.add("ready");
+    return;
+  }
+  caseGate.classList.remove("ready");
+  caseGate.textContent = data?.case_ready
+    ? "Payment rail captured — filing the case."
+    : "Case stays open until a bank account or wallet lands.";
+}
+
+function setComposerBlocked(on) {
+  input.disabled = on;
+  sendBtn.disabled = on;
+  input.placeholder = on ? "Blocked by pre-screen — no chat to open" : "Message the decoy…";
+}
+
+async function loadProfiles() {
+  try {
+    const data = await api("/api/profiles");
+    profiles = data.profiles || [];
+  } catch {
+    return;
+  }
+  profiles.forEach((p) => {
+    const option = document.createElement("option");
+    option.value = p.id;
+    const verdict = p.screening.verdict.toUpperCase();
+    option.textContent = `${p.name}, ${p.age} · ${verdict} ${p.screening.risk}`;
+    matchSelect.appendChild(option);
   });
+}
+
+async function createSession() {
+  const body = { persona_id: PERSONA_ID };
+  if (profileId) body.profile_id = profileId;
+  let data;
+  try {
+    data = await api("/api/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    if (err.status !== 403) throw err;
+    // The pre-screen refuses the session outright — that is the product working.
+    blockedBeforeContact = true;
+    sessionId = null;
+    paintPhase(null);
+    setComposerBlocked(true);
+    return null;
+  }
+  blockedBeforeContact = false;
+  setComposerBlocked(false);
   sessionId = data.session_id;
   paintIntel(data);
   if (scriptActive()) paintDemoPersona();
@@ -434,12 +541,25 @@ async function newSession() {
   thread.innerHTML = "";
   filledKeys = new Set();
   dossierPrimed = false;
+  blockedBeforeContact = false;
   resetDemoScript();
   applyMode();
-  await createSession();
+  const profile = selectedProfile();
+  paintPrescreen(profile);
+  const data = await createSession();
+  if (!data) {
+    addBubble(
+      "system",
+      `${profile.name} was blocked before contact — ${profile.screening.reasons[0]}. ` +
+        "Pick another match to open a chat.",
+    );
+    return;
+  }
   addBubble(
     "system",
-    "You are the other party. Romance lure, emergency loan — or chat normally."
+    profile
+      ? `Matched with ${profile.name}. You are the other party — chat normally, or go for the money.`
+      : "You are the other party. Romance lure, emergency loan — or chat normally.",
   );
 }
 
@@ -765,8 +885,21 @@ $("refresh-cases").addEventListener("click", () => loadCases());
 
 // ------------------------------------------------------------------ boot
 
+matchSelect.addEventListener("change", () => {
+  profileId = matchSelect.value;
+  newSession().catch((err) => addBubble("system", String(err.message || err)));
+});
+
 async function boot() {
   renderDossier({}, dossierEl, { animate: false });
+  await loadProfiles();
+  // /?match=p01 opens the console already bound to a deck profile, so it can sit
+  // next to /tinder?open=p01 on the same match.
+  const wanted = new URLSearchParams(location.search).get("match");
+  if (wanted && profiles.some((p) => p.id === wanted)) {
+    profileId = wanted;
+    matchSelect.value = wanted;
+  }
   await newSession();
   refreshCount();
   checkBrain();

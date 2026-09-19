@@ -13,6 +13,10 @@ never mentioned by the decoy.
 - Two surfaces on one server: the analyst console at `/` (back office) and the dating app at
  `/tinder` (product). They must always link to each other in the UI — console header button
  “Open the dating app”, and the stage caption beside the phone links back to `/`.
+- Both surfaces run the same pipeline and must show the same three stages. The console has a
+ Match dropdown bound to the same deck, a pre-screen card, a phase card (owner → Faker
+ takeover → blocked) and a case gate line. Picking a blocked profile there gets the same 403
+ and disables the composer. `/?match=<id>` pairs with `/tinder?open=<id>`.
 - Python FastAPI (`app/main.py`) + vanilla `static/` frontend, two tabs: Live chat and Case files. Palette: `#00C8CB` / `#00A3B0` accents on `#0B1020` navy, `#334155` lines, `#E2E8F0` text.
 - Local host: `npm run dev` (`scripts/dev.js`) creates `.venv` if needed, installs `requirements.txt`, and starts uvicorn with reload on port 8787.
 - Live chat talks to the live model as Ava Lin. Do not show a 1/2 mode switch. Do not show the word “demo” in the UI except as internal mode ids. Analyst score and the fraud-report ticks come from `/api/chat`. Score climbs with the lure and jumps when a bank account or wallet is given; that auto-files the case and plays the police/bank handover. The only decoy is Ava Lin.

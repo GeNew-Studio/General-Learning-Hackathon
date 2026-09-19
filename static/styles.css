@@ -53,6 +53,113 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Stage 1 and 2 of the pipeline, mirrored from the dating app. */
+.match-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.match-picker select {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.45rem;
+  font: inherit;
+  font-size: 0.78rem;
+  max-width: 17rem;
+}
+
+.prescreen {
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  margin: 0.7rem 0.9rem 0;
+  background: var(--bg-2);
+}
+.ps-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ps-kicker {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ps-verdict {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  background: #10382f;
+  color: #6ee7a8;
+}
+.prescreen[data-verdict="caution"] .ps-verdict { background: #3d2f10; color: #f5c451; }
+.prescreen[data-verdict="blocked"] .ps-verdict { background: #401820; color: #ff8a9c; }
+
+.ps-head { margin: 0.35rem 0 0.4rem; font-size: 0.85rem; color: var(--text); }
+.ps-bar {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ps-bar i { display: block; height: 100%; width: 0; background: #6ee7a8; transition: width 0.4s ease; }
+.prescreen[data-verdict="caution"] .ps-bar i { background: #f5c451; }
+.prescreen[data-verdict="blocked"] .ps-bar i { background: #ff7a7a; }
+
+.ps-reasons { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.2rem; }
+.ps-reasons li { font-size: 0.74rem; color: var(--muted); line-height: 1.35; }
+.ps-reasons li::before { content: "· "; color: #ff8a9c; }
+
+.phase-card {
+  margin: 0.6rem 0.9rem 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--bg-2);
+}
+.phase-chip {
+  display: inline-block;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  border-radius: 0.3rem;
+  padding: 0.14rem 0.4rem;
+  background: var(--bg-3);
+  color: var(--muted);
+}
+.phase-card p { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+
+.phase-card[data-phase="takeover"] {
+  border-color: #00c8cb88;
+  background: linear-gradient(135deg, #0b1020, #10283a);
+  box-shadow: 0 0 0 1px #00c8cb22;
+}
+.phase-card[data-phase="takeover"] .phase-chip { background: #00c8cb; color: #0b1020; }
+.phase-card[data-phase="takeover"] p { color: #9fd9dc; }
+
+.phase-card[data-phase="blocked"] { border-color: #ff7a7a66; background: #240f14; }
+.phase-card[data-phase="blocked"] .phase-chip { background: #ff7a7a; color: #240f14; }
+.phase-card[data-phase="blocked"] p { color: #ffb3bd; }
+
+.case-gate {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.case-gate.ready { color: #6ee7a8; }
+
 /* Jump to the other surface — the product the console is watching. */
 .surface-link {
   color: var(--honey);
