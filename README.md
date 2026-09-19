@@ -1,58 +1,144 @@
-# General Learning Hacks
+# FakerAI
 
-Hackathon seed: **learn-while-you-vibecode** (Track 1 — Automate your studies).
+You play the other party; an AI decoy stays in persona, keeps them talking, and quietly
+builds a case file. When the agent is confident it is talking to a scammer, the case is
+written to a local SQLite database with everything the conversation gave away — accounts,
+wallets, handles, links, aliases, and the playbook they are running.
 
-Built from scratch in this repo. Starting codebase is the VibeBlog teaching-IDE loop (VS Code extension + guide), not a GitHub fork.
+Three stages, same as the commercial scam-baiting systems this is modelled on:
 
----
+1. **Bait** — one of four personas keeps the conversation alive.
+2. **Extract** — every turn, the model pulls structured intelligence out of what they said.
+3. **File** — confident cases land in the database, searchable and exportable.
 
-# VibeBlog (seed)
+## Setup
 
-教育版 Cursor：**真 VS Code** + 可見思考（Guide）+ 思考日誌。Startup 主線不是網頁 quiz。
-
-## 主產品（請從這裡開始）
-
-| 是什麼 | 路徑 |
-|--------|------|
-| **VS Code Extension** | [`extension/`](extension/) — F5 開發，左側 **VibeBlog → 思考關** |
-| 接水果工作區 | [`workspace/catch-fruit/`](workspace/catch-fruit/) — py/cpp/cs/ipynb 範例檔 |
-| 桌面 / 網頁 IDE 殼 | [`desktop/`](desktop/) — OpenVSCode Docker（Phase 1b） |
-
-```text
-1. VS Code 打開本 repo
-2. F5 → Run VibeBlog Extension
-3. 開資料夾 workspace/catch-fruit
-4. Activity Bar → VibeBlog → 思考關
-```
-
-詳見 [extension/README.md](extension/README.md)。
-
-## 網頁 Monaco（內部 demo）
-
-給快速試 UI / 教學引擎，**不是對外主產品**：
+Needs Node (for `npm run dev`) and Python 3.
 
 ```bash
-npm install
+cd FakerAI
+```
+
+Copy `.env.example` to `.env` and fill in a key. First `npm run dev` will create `.venv`, install Python deps, and copy `.env.example` if `.env` is missing.
+
+## Run
+
+```bash
 npm run dev
 ```
 
-→ http://localhost:5173/
+Open [http://127.0.0.1:8787](http://127.0.0.1:8787). Port 8000 is blocked on this machine.
 
-## 策略
-
-- **現在：** Extension on Code-OSS 生態（完整 IDE 能力：Terminal、語言、擴充）
-- **下一步：** OpenVSCode/Electron 品牌包 + 同一 extension
-- **Full fork vscode：** 有資金、要改 core 像 Cursor 時再 fork — 見 [docs/ide-roadmap.md](docs/ide-roadmap.md)
-
-## 同步腳本
+Same server, without npm:
 
 ```bash
-node scripts/sync-lesson-to-extension.js
-node scripts/sync-workspace.js
-npm run check:machine
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8787
 ```
 
-## 文件
+## The brain
 
-- [docs/ide-roadmap.md](docs/ide-roadmap.md)
-- [docs/pitch.md](docs/pitch.md)
+`app/llm.py` walks a provider chain and uses the first one that answers:
+
+| Order | Provider | Env |
+|---|---|---|
+| 1 | DeepSeek | `DEEPSEEK_API_KEY` |
+| 2 | Ling / InclusionAI | `LING_API_KEY` (+ `LING_BASE_URL`, `LING_MODEL`) |
+| 3 | OpenRouter | `OPENROUTER_API_KEY` |
+| 4 | Any OpenAI-compatible endpoint | `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` |
+| 5 | Offline heuristics, only if `DECOY_ALLOW_FALLBACK=1` | — |
+
+Not sure which host issued a key? `python scripts/check_key.py` sends one tiny request
+to each candidate and reports which one accepts it.
+
+A provider that fails to connect is put on a two-minute cooldown so one blocked host does
+not slow down every later turn. `GET /api/health` shows the current state of the chain.
+
+**When no provider answers, the decoy says nothing.** The chat returns HTTP 503, a red
+banner appears above the conversation, and your message is put back in the input box. It
+will not invent a reply — a canned line that ignores what you wrote is worse than an honest
+error. Set `DECOY_ALLOW_FALLBACK=1` if you want the offline heuristics to answer anyway;
+they are fixed strings and cannot read context.
+
+### If DeepSeek is unreachable
+
+On this machine `api.deepseek.com` is reset during the TLS handshake as soon as the
+hostname appears in the ClientHello. TCP to the IP connects fine, so it is SNI filtering on
+the network path, not a bad key. Either use a VPN, or route through OpenRouter:
+
+1. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
+2. Add `OPENROUTER_API_KEY=sk-or-...` to `.env`.
+3. Press **Recheck** in the red banner — it re-reads `.env` without a server restart.
+
+`deepseek/deepseek-v4-flash` is about $0.09 per million input tokens, so a demo costs a
+fraction of a cent. With no credit on the account, set `OPENROUTER_MODEL` to a free model
+such as `z-ai/glm-5.2:free` instead.
+
+## Personas
+
+Auto-picked from the first messages, or chosen from the dropdown in the chat header.
+Once picked they lock, so the character does not drift mid-conversation.
+
+| ID | Character | Typical lure |
+|---|---|---|
+| student | Lin Yuan, mainland university student | internships, 兼职, campus |
+| elder | Chen Shufen, retired | bank / police / family emergency |
+| crypto | Marcus Hale, retail trader | groups, wallets, guaranteed ROI |
+| job_seeker | Wei Na, laid off | HR, task gigs, training fees |
+
+The decoy plays naive and stalls, but never sends money, OTPs, seed phrases, or ID.
+It does push for *their* details — which account, which wallet, which link — because that
+is what ends up in the case file.
+
+Ordinary chat with no fraud pattern: after a few turns the decoy wraps up and goes quiet.
+
+## Case files
+
+A case is filed automatically when the verdict is `scammer`, the score clears
+`DECOY_AUTO_RECORD_SCORE` (70) and confidence clears `DECOY_AUTO_RECORD_CONFIDENCE` (60).
+You can also file one by hand at any point with **Flag as scammer**. Benign conversations
+are never stored. Cases upsert as the chat continues, so a case grows instead of duplicating.
+
+Each case holds the verdict and analyst notes, the full transcript, and the extracted
+intelligence: identity, contact, payment rails, infrastructure, and playbook. Values that
+appear in more than one case surface as **shared infrastructure** on the case detail page.
+
+The **Case files** tab searches across IDs, categories, summaries, and any extracted value,
+and exports to JSON or CSV.
+
+### Database
+
+SQLite at `data/decoy.db` (override with `DECOY_DB_PATH`), three tables: `cases`,
+`case_iocs`, `case_messages`. `data/` is gitignored.
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/session` | new session, optional `persona_id` |
+| POST | `/api/chat` | send a message, get reply + verdict + intel |
+| POST | `/api/session/{id}/persona` | switch the decoy mid-conversation |
+| POST | `/api/session/{id}/flag` | file the case by hand |
+| GET | `/api/cases?q=` | search cases |
+| GET | `/api/cases/{case_id}` | full case with IOCs, transcript, related cases |
+| DELETE | `/api/cases/{case_id}` | remove a case |
+| GET | `/api/cases/export.json` / `.csv` | export |
+| GET | `/api/stats` | totals, categories, shared infrastructure |
+| GET | `/api/health` | provider chain state |
+| POST | `/api/providers/reload` | re-read `.env` and rebuild the provider chain |
+
+## Checking it without a browser
+
+```bash
+python scripts/smoke_test.py job     # also: elder, crypto, student
+python scripts/api_check.py          # against a running server
+python scripts/repro.py "hi grandma, it's me"   # one turn, prints which brain answered
+```
+
+## Scope
+
+Defensive research demo, local only. There is no outbound routing to banks, telcos, or
+messaging platforms — the decoy talks to whoever is in the chat window and nothing leaves
+the machine.

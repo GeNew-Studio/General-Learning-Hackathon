@@ -1,20 +1,10 @@
 {
-  "name": "vibeblog",
+  "name": "fakerai",
   "private": true,
-  "type": "module",
+  "description": "Defensive scam-baiting research tool",
   "scripts": {
-    "sync:extension": "node scripts/sync-lesson-to-extension.js",
-    "sync:workspace": "node scripts/sync-workspace.js",
-    "check:machine": "node scripts/check-machine.js && node scripts/check-lesson.js && node scripts/check-journal.js",
-    "dev": "vite --host",
-    "build": "vite build",
-    "preview": "vite preview --host"
-  },
-  "devDependencies": {
-    "vite": "^6.3.5",
-    "vite-plugin-monaco-editor": "^1.1.0"
-  },
-  "dependencies": {
-    "monaco-editor": "^0.56.0"
+    "dev": "node scripts/dev.js",
+    "start": "node scripts/dev.js",
+    "tinder": "cd tinder_app && flutter run -d chrome --web-port=5555"
   }
 }

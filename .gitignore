@@ -1,7 +1,9 @@
-node_modules
-dist
-.DS_Store
-*.local
 .env
-.env.*
-.cursor/secrets.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+data/
+node_modules/

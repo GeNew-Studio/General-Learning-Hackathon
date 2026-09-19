@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FakerAI</title>
+    <link rel="stylesheet" href="/static/styles.css?v=11" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="brand">
+          <span class="mark" aria-hidden="true"></span>
+          <div>
+            <strong>FakerAI</strong>
+            <span class="sub">you play the other party</span>
+          </div>
+        </div>
+        <nav class="tabs" role="tablist">
+          <button type="button" class="tab active" data-view="chat" role="tab">Live chat</button>
+          <button type="button" class="tab" data-view="cases" role="tab">
+            Case files <span class="tab-count" id="tab-count">0</span>
+          </button>
+        </nav>
+        <div class="top-actions">
+          <button type="button" id="new-session" class="primary">New session</button>
+          <div class="mode-switch" role="tablist" aria-label="Mode">
+            <button type="button" class="mode-btn active" data-mode="demo" role="tab" aria-selected="true">
+              1
+            </button>
+            <button type="button" class="mode-btn" data-mode="real" role="tab" aria-selected="false">
+              2
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="view" id="view-chat">
+        <section class="chat-pane" aria-label="Conversation">
+          <div class="persona-bar">
+            <div class="persona-live" id="persona-live">
+              <div class="persona-idle">Persona will lock from your first messages</div>
+            </div>
+            <label class="persona-picker">
+              <span>Decoy</span>
+              <select id="persona-select">
+                <option value="">Auto-pick</option>
+              </select>
+            </label>
+          </div>
+          <div class="offline-banner hidden" id="offline-banner">
+            <div class="ob-text">
+              <strong>No model connected.</strong>
+              <span id="offline-detail">The decoy cannot reply until a provider answers.</span>
+            </div>
+            <button type="button" id="recheck-brain">Recheck</button>
+          </div>
+          <ol class="thread" id="thread"></ol>
+          <form class="composer" id="composer">
+            <textarea
+              id="input"
+              rows="1"
+              maxlength="4000"
+              placeholder="Message the decoy…"
+              required
+            ></textarea>
+            <button type="submit" id="send">Send</button>
+          </form>
+        </section>
+
+        <aside class="intel-pane" aria-label="Live verdict">
+          <div class="intel-top">
+            <div class="gauge">
+              <svg viewBox="0 0 120 120" class="ring" aria-hidden="true">
+                <circle class="track" cx="60" cy="60" r="52" />
+                <circle class="fill" id="ring-fill" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="gauge-readout">
+                <span id="score">0</span>
+                <small>score</small>
+              </div>
+            </div>
+            <div class="intel-summary">
+              <p class="intel-kicker">Analyst view · decoy never sees this</p>
+              <p class="provider" id="provider"></p>
+              <div class="verdict-pill" id="verdict-pill">uncertain</div>
+              <dl class="meta">
+                <div><dt>Session</dt><dd id="status">active</dd></div>
+                <div><dt>Category</dt><dd id="category">—</dd></div>
+                <div><dt>Turn</dt><dd id="turn">0</dd></div>
+                <div><dt>Evidence</dt><dd id="ioc-count">0</dd></div>
+              </dl>
+              <button type="button" id="flag-btn" class="flag-btn">Flag as scammer</button>
+            </div>
+          </div>
+
+          <div class="case-banner hidden" id="case-banner"></div>
+          <div class="bait-goal hidden" id="bait-goal"></div>
+
+          <div class="intel-body">
+            <section class="intel-block">
+              <h2>Why</h2>
+              <ul class="reasons" id="reasons">
+                <li>Waiting for the first message.</li>
+              </ul>
+              <div class="signals" id="signals"></div>
+            </section>
+            <section class="intel-block grow">
+              <h2>Fraud report</h2>
+              <div class="dossier" id="dossier"></div>
+            </section>
+          </div>
+        </aside>
+
+        <div class="handover" id="handover" aria-hidden="true">
+          <div class="handover-inner">
+            <p class="handover-kicker" id="handover-kicker">Extracting fraud data</p>
+            <div class="handover-extract">
+              <article class="handover-card" style="--i: 0">
+                <span class="handover-hk">Caller</span>
+                <strong id="handover-caller">—</strong>
+              </article>
+              <article class="handover-card" style="--i: 1">
+                <span class="handover-hk">Account</span>
+                <strong id="handover-account">—</strong>
+              </article>
+              <article class="handover-card" style="--i: 2">
+                <span class="handover-hk">Amount</span>
+                <strong id="handover-amount">—</strong>
+              </article>
+              <article class="handover-card" style="--i: 3">
+                <span class="handover-hk">Risk</span>
+                <strong id="handover-risk">—</strong>
+                <p id="handover-risk-note"></p>
+              </article>
+            </div>
+            <div class="handover-route">
+              <article class="handover-dest" data-side="police">
+                <span class="handover-hk">Police Cybercrime Unit</span>
+                <p class="handover-alert">New Fraud Report Received</p>
+              </article>
+              <div class="handover-beam left" aria-hidden="true"></div>
+              <article class="handover-packet">
+                <span class="handover-hk">Fraud Report Packet</span>
+                <strong id="handover-case">—</strong>
+                <p id="handover-packet-line">—</p>
+              </article>
+              <div class="handover-beam right" aria-hidden="true"></div>
+              <article class="handover-dest" data-side="bank">
+                <span class="handover-hk">Bank Fraud Department</span>
+                <p class="handover-alert">Suspicious Activity Alert Received</p>
+              </article>
+            </div>
+            <ul class="handover-summary">
+              <li>Fraud data successfully delivered</li>
+              <li>Case ID generated</li>
+              <li>Awaiting further action from authorities</li>
+            </ul>
+          </div>
+        </div>
+      </main>
+
+      <section class="view hidden" id="view-cases" aria-label="Case files">
+        <div class="cases-head">
+          <div class="stats" id="stats"></div>
+          <div class="cases-toolbar">
+            <input type="search" id="case-search" placeholder="Search cases, wallets, handles…" />
+            <button type="button" id="refresh-cases">Refresh</button>
+            <a class="ghost" href="/api/cases/export.json" download>Export JSON</a>
+            <a class="ghost" href="/api/cases/export.csv" download>Export CSV</a>
+          </div>
+        </div>
+        <div class="cases-grid">
+          <ol class="case-list" id="case-list"></ol>
+          <div class="case-detail" id="case-detail">
+            <p class="empty">Select a case to open the file.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script src="/static/demo-scripts.js?v=1"></script>
+    <script src="/static/app.js?v=18"></script>
+  </body>
+</html>

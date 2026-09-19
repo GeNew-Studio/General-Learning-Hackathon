@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>ava</title>
+    <link rel="stylesheet" href="/static/tinder.css?v=7" />
+  </head>
+  <body>
+    <div class="stage">
+      <div class="phone" id="phone">
+        <header class="status-bar" aria-hidden="true">
+          <span id="clock">9:30</span>
+          <div class="status-right">
+            <svg class="icon-moon" viewBox="0 0 16 16"><path d="M13.2 10.4A6.2 6.2 0 0 1 6.1 2.4 6.4 6.4 0 1 0 13.2 10.4z"/></svg>
+            <svg class="icon-bars" viewBox="0 0 18 12">
+              <rect x="0" y="8" width="3" height="4" rx="0.5"/>
+              <rect x="5" y="5.5" width="3" height="6.5" rx="0.5"/>
+              <rect x="10" y="3" width="3" height="9" rx="0.5"/>
+              <rect x="15" y="0" width="3" height="12" rx="0.5" opacity=".35"/>
+            </svg>
+            <svg class="icon-wifi" viewBox="0 0 16 12">
+              <path d="M8 10.6a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"/>
+              <path d="M4.6 8.4a4.8 4.8 0 0 1 6.8 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <path d="M2.2 5.8a8.2 8.2 0 0 1 11.6 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <span class="battery">
+              <span class="battery-body"><i id="battery-level"></i></span>
+              <span class="battery-nub"></span>
+              <span class="battery-pct">94</span>
+            </span>
+          </div>
+        </header>
+
+        <header class="chat-head">
+          <button type="button" class="icon-btn" id="back-btn" aria-label="Back">
+            <svg viewBox="0 0 24 24"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="match-id">
+            <img class="match-photo" src="/static/ava.svg" alt="" />
+            <span class="match-name">ava</span>
+          </div>
+          <button type="button" class="icon-btn" id="more-btn" aria-label="More">
+            <svg viewBox="0 0 24 24">
+              <circle cx="6" cy="12" r="1.7"/>
+              <circle cx="12" cy="12" r="1.7"/>
+              <circle cx="18" cy="12" r="1.7"/>
+            </svg>
+          </button>
+        </header>
+
+        <p class="fail-banner hidden" id="fail-banner">Message not sent</p>
+
+        <ol class="thread" id="thread"></ol>
+
+        <form class="composer" id="composer">
+          <button type="button" class="gif-btn" id="gif-btn">GIF</button>
+          <label class="input-wrap">
+            <input
+              id="input"
+              type="text"
+              maxlength="4000"
+              placeholder="輸入訊息"
+              autocomplete="off"
+              enterkeyhint="send"
+            />
+            <button type="submit" class="send-btn hidden" id="send" aria-label="Send">
+              <svg viewBox="0 0 24 24"><path d="M3.4 20.6 21 12 3.4 3.4 3.3 10l11.2 2-11.2 2z"/></svg>
+            </button>
+          </label>
+        </form>
+
+        <div class="handover" id="handover" aria-hidden="true">
+          <button type="button" class="handover-more" id="handover-more" aria-label="More">
+            <svg viewBox="0 0 24 24">
+              <circle cx="6" cy="12" r="1.7"/>
+              <circle cx="12" cy="12" r="1.7"/>
+              <circle cx="18" cy="12" r="1.7"/>
+            </svg>
+          </button>
+          <div class="handover-inner">
+            <p class="handover-kicker" id="handover-kicker">Extracting fraud data</p>
+            <div class="handover-extract">
+              <article class="handover-card" style="--i: 0">
+                <span class="handover-hk">Caller</span>
+                <strong id="handover-caller">—</strong>
+              </article>
+              <article class="handover-card" style="--i: 1">
+                <span class="handover-hk">Account</span>
+                <strong id="handover-account">—</strong>
+              </article>
+              <article class="handover-card" style="--i: 2">
+                <span class="handover-hk">Amount</span>
+                <strong id="handover-amount">—</strong>
+              </article>
+              <article class="handover-card" style="--i: 3">
+                <span class="handover-hk">Risk</span>
+                <strong id="handover-risk">—</strong>
+                <p id="handover-risk-note"></p>
+              </article>
+            </div>
+            <div class="handover-route">
+              <article class="handover-packet">
+                <span class="handover-hk">Fraud Report Packet</span>
+                <strong id="handover-case">—</strong>
+                <p id="handover-packet-line">—</p>
+              </article>
+              <div class="handover-dests">
+                <article class="handover-dest" data-side="police">
+                  <span class="handover-hk">Police Cybercrime Unit</span>
+                  <p class="handover-alert">New Fraud Report Received</p>
+                </article>
+                <article class="handover-dest" data-side="bank">
+                  <span class="handover-hk">Bank Fraud Department</span>
+                  <p class="handover-alert">Suspicious Activity Alert Received</p>
+                </article>
+              </div>
+            </div>
+            <ul class="handover-summary">
+              <li>Fraud data successfully delivered</li>
+              <li>Case ID generated</li>
+              <li>Awaiting further action from authorities</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="sheet hidden" id="sheet" hidden>
+          <button type="button" class="sheet-backdrop" id="sheet-backdrop" aria-label="Close"></button>
+          <div class="sheet-card" role="dialog" aria-label="Match options">
+            <button type="button" id="unmatch-btn">Unmatch</button>
+            <button type="button" id="sheet-close">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/demo-scripts.js?v=1"></script>
+    <script src="/static/tinder.js?v=4"></script>
+  </body>
+</html>

@@ -1,0 +1,63 @@
+---
+alwaysApply: true
+---
+
+# FakerAI
+
+Defensive scam-baiting research tool. The user plays the other party; an AI decoy stays in persona,
+baits for details, and files confirmed scammers into a local database. The analyst pane is
+never mentioned by the decoy.
+
+## Stack
+
+- Python FastAPI (`app/main.py`) + vanilla `static/` frontend, two tabs: Live chat and Case files. Palette: `#00C8CB` / `#00A3B0` accents on `#0B1020` navy, `#334155` lines, `#E2E8F0` text.
+- Local host: `npm run dev` (`scripts/dev.js`) creates `.venv` if needed, installs `requirements.txt`, and starts uvicorn with reload on port 8787.
+- Header switch (top right): **1** (scripted, default) vs **2** (live model). Do not show the word “demo” in the UI except as internal mode ids. Mode 1 fuzzy-matches a canned script for the selected decoy (`elder` family-emergency, `job_seeker` task-job, `crypto` airdrop, `student` 公检法, `dating` Tinder romance / emergency-loan) and returns fixed victim lines; further turns, or mode 2, use the live model. Analyst score climbs each scripted turn and jumps to the high 80s when a bank account or wallet is given. `/api/chat` is unchanged — scripted history is appended via `POST /api/session/{id}/seed`. Default decoy is Chen Shufen.
+- SQLite at `data/decoy.db` (`app/db.py`), gitignored — tables `cases`, `case_iocs`, `case_messages`
+- Serve on port 8787 — port 8000 is blocked on this machine
+
+## Model access
+
+- `app/llm.py` owns the provider chain: DeepSeek → Ling (`LING_API_KEY`) → OpenRouter →
+ any OpenAI-compatible (`LLM_BASE_URL`) → offline heuristics. Failed providers cool down
+ for two minutes.
+- Ling is open-weight with no single official API — set `LING_BASE_URL` to match the host
+ that issued the key (ZenMux default, or Novita/OpenRouter). All three are reachable here.
+ `scripts/check_key.py` probes a key against every candidate host to identify its owner.
+- The current key is an OpenRouter free-tier key, so `LING_BASE_URL` points at OpenRouter.
+ Free capacity returns 429 under load — `llm.py` retries twice with backoff, then falls
+ through to the next model (`ling-3.0-flash-fin:free`, `glm-5.2:free`, `minimax-m3:free`).
+- Current DeepSeek IDs are `deepseek-v4-flash` / `deepseek-v4-pro`; `deepseek-chat` was retired.
+  V4 thinks by default, so `DEEPSEEK_THINKING=disabled` keeps chat latency sane.
+- `api.deepseek.com` is SNI-filtered on this machine (TLS reset, TCP fine). That is a network
+  fact, not a bug — add `OPENROUTER_API_KEY` or use a VPN, do not "fix" the code.
+- When no provider answers, `/api/chat` returns 503 and the decoy stays silent; the UI shows a
+  red banner and restores the typed message. Never fake an in-character reply.
+  `DECOY_ALLOW_FALLBACK=1` opts back into the canned offline heuristics.
+- `POST /api/providers/reload` re-reads `.env` so a pasted key works without a restart.
+- Keys live in `.env`, never committed.
+
+## Behaviour
+
+- One model call per turn returns the in-character reply, the verdict, and the intel object
+  (`app/agent.py`). `app/fallback.py` runs when no provider answers and the UI labels it `local-fallback`.
+- Five personas: `student` (Lin Yuan), `elder` (Chen Shufen), `crypto` (Marcus Hale),
+  `job_seeker` (Wei Na), `dating` (Ava Lin). Auto-picked from the first messages, or forced from the dropdown; locks once set.
+  Demo scripts lock that decoy until the canned turns are done (`elder`, `job_seeker`, `crypto`, `student`, `dating`).
+- Reply in the user's language. Benign chats wrap up after ≥3 turns and go quiet.
+- Intel accumulates across turns in `app/intel.py` (identity / contact / payment /
+  infrastructure / playbook), model output merged with a regex safety net.
+- Cases file automatically at score ≥ `DECOY_AUTO_RECORD_SCORE` and confidence ≥
+  `DECOY_AUTO_RECORD_CONFIDENCE`, or manually via **Flag as scammer**. Upsert per session.
+  Benign sessions are never stored.
+- Repeated values across cases surface as "shared infrastructure".
+
+## Conventions
+
+- Regex cues in `app/signals.py` are analyst hints only — do not trust them as the verdict
+- Dedupe IOCs with `intel.dedupe_key`, which ignores spacing on accounts, phones and
+ wallets so the model and the regex net cannot file the same account twice
+- Decoy never sends money, OTPs, seed phrases, or ID, but should actively draw out
+  their account, wallet, link, and handle — that is what the case file is made of
+- Do not add WhatsApp/Telegram/bank-freeze routing unless asked; this phase is local only
+- `scripts/smoke_test.py` and `scripts/api_check.py` verify the pipeline without a browser
